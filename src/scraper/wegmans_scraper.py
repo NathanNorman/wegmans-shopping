@@ -162,24 +162,32 @@ class WegmansScraper:
         # Intercept Algolia API requests (define once, reuse instance variable)
         async def handle_route(route, request):
             """Intercept and capture API responses"""
+            logger.debug(f"🌐 Intercepted request: {request.url[:100]}...")
             response = await route.fetch()
 
             # Check if this is an Algolia search API call
             if 'algolia' in request.url.lower() and 'queries' in request.url.lower():
+                logger.info(f"🎯 ALGOLIA API CALL INTERCEPTED: {request.url[:150]}")
                 try:
                     body = await response.body()
                     data = json.loads(body)
                     self.current_api_responses.append(data)
-                    logger.info(f"Captured Algolia API response with {len(data.get('results', []))} result sets")
+                    logger.info(f"📦 Captured Algolia API response with {len(data.get('results', []))} result sets")
                 except Exception as e:
-                    logger.warning(f"Error parsing API response: {e}")
+                    logger.warning(f"❌ Error parsing API response: {e}")
+            else:
+                logger.debug(f"  Skipping non-Algolia request")
 
             await route.fulfill(response=response)
 
         # Enable request interception for Algolia (only if not already enabled)
         if not hasattr(self, '_route_enabled'):
+            logger.info("🔌 Setting up Algolia API route interception: **/*algolia*/**")
             await self.page.route("**/*algolia*/**", handle_route)
             self._route_enabled = True
+            logger.info("✅ Route interception enabled")
+        else:
+            logger.info("ℹ️  Route interception already enabled (reusing session)")
 
         # Set store location only once per session
         if not self.store_location_set:
@@ -194,21 +202,25 @@ class WegmansScraper:
         await self.page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
 
         # Wait for Algolia API calls to complete (poll instead of fixed wait)
+        logger.info("⏳ Waiting for Algolia API responses (max 10 seconds)...")
         max_wait = 10  # Maximum 10 seconds
         check_interval = 0.5  # Check every 500ms
         elapsed = 0
 
         while elapsed < max_wait:
             if len(self.current_api_responses) > 0:
+                logger.info(f"⚡ Got API response after {elapsed}s! Waiting 0.5s more for any additional responses...")
                 # Give it a tiny bit more time to get all responses
                 await asyncio.sleep(0.5)
                 break
             await asyncio.sleep(check_interval)
             elapsed += check_interval
 
+        logger.info(f"⏱️  Wait complete. Captured {len(self.current_api_responses)} API response(s) in {elapsed}s")
+
         # Process captured API responses
         if self.current_api_responses:
-            logger.info(f"Processing {len(self.current_api_responses)} API responses")
+            logger.info(f"✅ SUCCESS: Captured {len(self.current_api_responses)} Algolia API responses")
 
             # Save raw API responses for debugging
             with open("algolia_responses.json", "w") as f:
@@ -216,14 +228,17 @@ class WegmansScraper:
             logger.info("Saved raw Algolia responses to algolia_responses.json")
 
             products = self._parse_algolia_responses(self.current_api_responses, max_results)
+            logger.info(f"✅ Algolia parsing returned {len(products)} products")
         else:
-            logger.warning("No Algolia API responses captured, falling back to HTML parsing")
+            logger.warning("⚠️  NO ALGOLIA API RESPONSES CAPTURED - Falling back to HTML parsing")
+            logger.info("This means Algolia API interception did not work")
             # Fallback to HTML parsing
             # await self.page.screenshot(path="debug_screenshot.png", full_page=True)  # Disabled for production
             # logger.info("Saved debug screenshot")
             products = await self._extract_products_from_page(self.page, max_results)
+            logger.info(f"📄 HTML parsing returned {len(products)} products")
 
-        logger.info(f"Found {len(products)} products")
+        logger.info(f"🎯 FINAL RESULT: Returning {len(products)} products to API")
         return products
 
     def _parse_algolia_responses(self, responses: List[Dict], max_results: Optional[int] = None) -> List[Dict]:
@@ -238,12 +253,15 @@ class WegmansScraper:
             List of product dictionaries
         """
         products = []
+        logger.info(f"🔍 Parsing {len(responses)} Algolia response(s)")
 
-        for response in responses:
+        for idx, response in enumerate(responses):
             results = response.get('results', [])
+            logger.info(f"  Response {idx+1}: Found {len(results)} result(s)")
 
-            for result in results:
+            for result_idx, result in enumerate(results):
                 hits = result.get('hits', [])
+                logger.info(f"    Result {result_idx+1}: Found {len(hits)} hit(s) (products)")
 
                 for hit in hits:
                     try:
