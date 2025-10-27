@@ -1,0 +1,13 @@
+# Existing dependencies
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+playwright>=1.40.0
+python-dotenv>=1.0.0
+nest-asyncio>=1.5.0
+
+# NEW: Web framework & database
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+psycopg2-binary>=2.9.9  # PostgreSQL driver
+pydantic>=2.5.0

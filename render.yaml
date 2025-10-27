@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: wegmans-shopping
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Will prompt during setup
+      - key: STORE_LOCATION
+        value: Raleigh
+      - key: SCRAPER_HEADLESS
+        value: true
+      - key: DEBUG
+        value: false
+      - key: HOST
+        value: 0.0.0.0
+    healthCheckPath: /api/health

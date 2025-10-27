@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wegmans Shopping List Builder</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ce3f24' stroke-width='2'%3E%3Ccircle cx='9' cy='21' r='1'/%3E%3Ccircle cx='20' cy='21' r='1'/%3E%3Cpath d='M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <img src="https://www.wegmans.com/_next/static/media/logo.0b4fa879.svg" alt="Wegmans Logo">
+            </div>
+            <div class="header-content">
+                <h1>Shopping List Builder</h1>
+                <p class="subtitle">Raleigh, NC • Build your list one item at a time</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="search-section">
+                <h2 class="section-heading">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    Search for Products
+                </h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="What are you looking for? (e.g., milk, eggs, bread)">
+                    <button onclick="searchProducts()" id="searchBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            <!-- Frequently Bought Items -->
+            <div class="frequent-section" id="frequentSection" style="display: none;">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    Frequently Bought
+                    <span style="font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: var(--font-weight-normal); margin-left: var(--space-2);">(from your past lists)</span>
+                </h2>
+                <div class="frequent-items" id="frequentItems"></div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h3 class="subsection-heading">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Select a Product
+                </h3>
+                <div class="results-grid" id="resultsGrid"></div>
+            </div>
+
+            <div class="empty-results" id="emptyResults">
+                <div class="emoji">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </div>
+                <p class="text-lg" style="font-weight: 600; color: var(--text-primary);">Ready to build your list?</p>
+                <p class="mt-3 text-sm">Search for products like milk, eggs, bread, or anything else!</p>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="cart-section">
+                <div class="cart-header">
+                    <span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        Your Cart
+                    </span>
+                    <span class="cart-count" id="cartCount">0</span>
+                </div>
+
+                <div class="cart-items" id="cartItems">
+                    <div class="empty-cart">
+                        <div class="emoji">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                        </div>
+                        <p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">Your cart is empty</p>
+                        <p class="text-xs">Start searching to add items!</p>
+                    </div>
+                </div>
+
+                <div class="cart-totals" id="cartTotals" style="display: none;">
+                    <div class="cart-total-row">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">$0.00</span>
+                    </div>
+                    <div class="cart-total-row">
+                        <span>Tax (est. 4%):</span>
+                        <span id="tax">$0.00</span>
+                    </div>
+                    <div class="cart-total-row grand-total">
+                        <span>Total:</span>
+                        <span id="total">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="cart-actions">
+                    <button class="past-lists-btn" onclick="showPastLists()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        Load Past Lists
+                    </button>
+                    <button class="btn-view-list" onclick="viewFinalList()" id="viewListBtn" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                            <path d="M3 6h18"></path>
+                            <path d="M3 12h18"></path>
+                            <path d="M3 18h18"></path>
+                        </svg>
+                        View Shopping List
+                    </button>
+                    <button class="btn-clear" onclick="clearCart()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Clear Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Lists Modal -->
+    <div class="saved-lists-modal" id="savedListsModal">
+        <div class="saved-lists-content">
+            <h2 style="margin-bottom: var(--space-6); color: var(--primary-red); font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                Your Past Shopping Lists
+            </h2>
+            <div id="savedListsContainer"></div>
+            <div class="mt-5">
+                <button onclick="closeSavedLists()" class="modal-actions" style="padding: var(--space-3) var(--space-6); cursor: pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text" id="loadingText">Searching Wegmans...</div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Quantity Selector Modal -->
+    <div class="quantity-modal" id="quantityModal">
+        <div class="quantity-modal-content">
+            <h3>How many would you like?</h3>
+
+            <div class="quantity-modal-product">
+                <div class="quantity-modal-product-name" id="qtyProductName"></div>
+                <div class="quantity-modal-product-price" id="qtyProductPrice"></div>
+            </div>
+
+            <div class="quantity-selector">
+                <label class="quantity-selector-label">Select Quantity (1-10)</label>
+                <div class="quantity-slider-container">
+                    <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">1</span>
+                    <input type="range" min="1" max="10" value="1" class="quantity-slider" id="quantitySlider">
+                    <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">10</span>
+                </div>
+                <div class="quantity-display" id="quantityDisplay">1</div>
+            </div>
+
+            <div class="quantity-custom">
+                <label class="quantity-custom-label">Need more? Enter custom amount:</label>
+                <input type="number" min="1" placeholder="e.g., 20" class="quantity-custom-input" id="customQuantityInput">
+            </div>
+
+            <div class="quantity-modal-actions">
+                <button class="btn-cancel-quantity" onclick="closeQuantityModal()">Cancel</button>
+                <button class="btn-add-quantity" onclick="confirmAddQuantity()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="delete-modal" id="deleteModal">
+        <div class="delete-modal-content">
+            <div class="delete-modal-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </div>
+            <h3>Remove item?</h3>
+            <div class="delete-modal-message" id="deleteMessage"></div>
+            <div class="delete-modal-actions">
+                <button class="btn-cancel-delete" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-confirm-delete" onclick="confirmDelete()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Yes, Remove
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final List Modal -->
+    <div class="final-list-modal" id="finalListModal">
+        <div class="final-list-content">
+            <h2>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+                    <path d="M3 6h18"></path>
+                    <path d="M3 12h18"></path>
+                    <path d="M3 18h18"></path>
+                </svg>
+                Your Shopping List - Organized by Aisle
+            </h2>
+            <div id="finalListTable"></div>
+
+            <div class="save-list-section">
+                <h3 style="margin-bottom: var(--space-3); font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Save This List
+                </h3>
+                <input type="text" id="saveListName" placeholder="List name (e.g., 'Weekly Groceries', 'Party Supplies')">
+                <button onclick="saveCurrentList()" class="btn-view-list">
+                    Save to Browser
+                </button>
+            </div>
+
+            <div class="modal-actions">
+                <button onclick="copyMarkdown()" class="btn-view-list">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy Markdown
+                </button>
+                <button onclick="downloadMarkdown()" style="background: var(--info-blue); color: var(--white);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download
+                </button>
+                <button onclick="closeFinalList()" class="btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Back to Shopping
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

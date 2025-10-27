@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Coca-Cola Cola",
+    "aisle": "10B",
+    "price": "$8.99"
+  },
+  {
+    "name": "Coca-Cola Cola",
+    "aisle": "Front End Register Area",
+    "price": "$2.79"
+  },
+  {
+    "name": "Coca-Cola Soda, Original Taste, Mini",
+    "aisle": "10B",
+    "price": "$6.49"
+  },
+  {
+    "name": "Coca-Cola Cola, Original Taste",
+    "aisle": "10B",
+    "price": "$2.99"
+  },
+  {
+    "name": "Coca-Cola Cola, Original Taste",
+    "aisle": "10B",
+    "price": "$4.99"
+  },
+  {
+    "name": "Coca-Cola Cola",
+    "aisle": "10B",
+    "price": "$12.79"
+  },
+  {
+    "name": "Coca-Cola Cola, Original Taste",
+    "aisle": "10B",
+    "price": "$5.49"
+  },
+  {
+    "name": "Diet Coke Retro Lime Bottle",
+    "aisle": "See Store Associate",
+    "price": "$2.79"
+  },
+  {
+    "name": "Diet Coke Retro Lime Fridge Pack Cans",
+    "aisle": "10B",
+    "price": "$8.99"
+  },
+  {
+    "name": "Coca-Cola Cola",
+    "aisle": "10B",
+    "price": "$6.49"
+  },
+  {
+    "name": "Coca-Cola Cola",
+    "aisle": "10B",
+    "price": "$6.79"
+  },
+  {
+    "name": "Diet Coke Cola",
+    "aisle": "Front End Register Area",
+    "price": "$2.79"
+  },
+  {
+    "name": "Coca-Cola Cola, Zero Sugar",
+    "aisle": "Front End Register Area",
+    "price": "$2.79"
+  },
+  {
+    "name": "Diet Coke Cola",
+    "aisle": "10B",
+    "price": "$8.99"
+  },
+  {
+    "name": "Coca-Cola Cola, Zero Sugar",
+    "aisle": "10B",
+    "price": "$8.99"
+  },
+  {
+    "name": "Coca-Cola Cherry Soda Soft Drink",
+    "aisle": "See Store Associate",
+    "price": "$2.79"
+  },
+  {
+    "name": "Diet Coke Soda, 6 Pack",
+    "aisle": "10B",
+    "price": "$5.49"
+  },
+  {
+    "name": "Diet Coke Soda, Mini",
+    "aisle": "10B",
+    "price": "$6.49"
+  },
+  {
+    "name": "Diet Coke Diet",
+    "aisle": "10B",
+    "price": "$12.79"
+  },
+  {
+    "name": "Coca-Cola Cola, Zero Sugar",
+    "aisle": "10B",
+    "price": "$5.49"
+  }
+]
