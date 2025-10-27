@@ -67,7 +67,10 @@ class WegmansScraper:
         self.browser = await self.playwright.chromium.launch(
             headless=self.headless,
             args=[
-                '--disable-blink-features=AutomationControlled'
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',  # Required for Docker/containers
+                '--disable-dev-shm-usage',  # Reduces memory usage
+                '--disable-gpu'  # Not needed in headless mode
             ]
         )
 
