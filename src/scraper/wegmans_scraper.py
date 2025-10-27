@@ -219,8 +219,8 @@ class WegmansScraper:
         else:
             logger.warning("No Algolia API responses captured, falling back to HTML parsing")
             # Fallback to HTML parsing
-            await self.page.screenshot(path="debug_screenshot.png", full_page=True)
-            logger.info("Saved debug screenshot")
+            # await self.page.screenshot(path="debug_screenshot.png", full_page=True)  # Disabled for production
+            # logger.info("Saved debug screenshot")
             products = await self._extract_products_from_page(self.page, max_results)
 
         logger.info(f"Found {len(products)} products")
@@ -364,8 +364,8 @@ class WegmansScraper:
         with open("debug_page.html", "w") as f:
             f.write(content)
         logger.info("Saved page HTML to debug_page.html")
-        await page.screenshot(path="debug_screenshot.png", full_page=True)
-        logger.info("Saved debug screenshot to debug_screenshot.png")
+        # await page.screenshot(path="debug_screenshot.png", full_page=True)  # Disabled for production
+        # logger.info("Saved debug screenshot to debug_screenshot.png")
 
         # Try multiple selector strategies
         selectors = [
