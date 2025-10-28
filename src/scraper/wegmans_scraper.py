@@ -325,7 +325,7 @@ class WegmansScraper:
                 hits = result.get('hits', [])
                 logger.info(f"    Result {result_idx+1}: Found {len(hits)} hit(s) (products)")
 
-                for hit in hits:
+                for hit_idx, hit in enumerate(hits):
                     try:
                         # Check if sold by weight
                         is_weight = hit.get('isSoldByWeight', False)
@@ -336,11 +336,21 @@ class WegmansScraper:
                             unit_price = hit['price_inStore'].get('unitPrice')  # e.g., "$9.99/lb."
 
                         # Extract essential fields: name, aisle, price, image
+                        product_name = hit.get('productName') or hit.get('name') or hit.get('title')
+                        product_aisle = self._extract_aisle(hit)
+                        product_price = self._extract_price(hit)
+                        product_image = self._extract_image(hit)
+
+                        # DEBUG: Log first hit details if name is missing
+                        if hit_idx == 0 and not product_name:
+                            logger.warning(f"⚠️  First hit has no name! Available keys: {list(hit.keys())[:20]}")
+                            logger.warning(f"   productName={hit.get('productName')}, name={hit.get('name')}, title={hit.get('title')}")
+
                         product = {
-                            'name': hit.get('productName') or hit.get('name') or hit.get('title'),
-                            'aisle': self._extract_aisle(hit),
-                            'price': self._extract_price(hit),
-                            'image': self._extract_image(hit),
+                            'name': product_name,
+                            'aisle': product_aisle,
+                            'price': product_price,
+                            'image': product_image,
                             # NEW: Weight-based fields
                             'is_sold_by_weight': is_weight,
                             'unit_price': unit_price,
@@ -354,10 +364,14 @@ class WegmansScraper:
 
                             # Check max results
                             if max_results and len(products) >= max_results:
+                                logger.info(f"✅ Reached max_results ({max_results}), stopping parse")
                                 return products
+                        else:
+                            if hit_idx < 3:  # Log first 3 failures only
+                                logger.warning(f"⚠️  Skipping hit #{hit_idx+1} - no name found (name={product_name}, price={product_price}, aisle={product_aisle})")
 
                     except Exception as e:
-                        logger.error(f"Error parsing product hit: {e}")
+                        logger.error(f"❌ Error parsing product hit #{hit_idx+1}: {e}")
                         logger.debug(f"Hit data: {hit}")
 
         return products
