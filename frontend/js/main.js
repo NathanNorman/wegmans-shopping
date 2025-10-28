@@ -137,9 +137,56 @@ async function loadFrequentItems() {
         console.log('✅ Found', frequentItems.length, 'frequently bought items (2+ purchases) from database');
         renderFrequentItems(frequentItems);
 
+        // Fetch missing images in background
+        fetchMissingImagesForFrequentItems(frequentItems);
+
     } catch (error) {
         console.log('  No frequent items yet (expected on first use)');
     }
+}
+
+async function fetchMissingImagesForFrequentItems(frequentItems) {
+    // Find items without images
+    const itemsNeedingImages = frequentItems.filter(item => !item.product.image);
+
+    if (itemsNeedingImages.length === 0) {
+        return;
+    }
+
+    console.log(`🖼️  Fetching images for ${itemsNeedingImages.length} frequent items...`);
+
+    for (const item of itemsNeedingImages) {
+        try {
+            // Search for the product to get fresh data with image
+            const response = await fetch('/api/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ query: item.product.name, max_results: 1 })
+            });
+
+            const data = await response.json();
+
+            if (data.products && data.products.length > 0) {
+                const product = data.products[0];
+
+                // Update the item's image in memory
+                if (product.image) {
+                    item.product.image = product.image;
+                    console.log(`  ✓ Found image for: ${item.product.name.substring(0, 40)}`);
+
+                    // Re-render to show new image
+                    renderFrequentItems(frequentItems);
+                }
+            }
+        } catch (error) {
+            console.log(`  ✗ Failed to fetch image for: ${item.product.name.substring(0, 40)}`);
+        }
+
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    console.log('✅ Finished fetching missing images');
 }
 
 function renderFrequentItems(frequentItems) {

@@ -232,7 +232,8 @@ def update_frequent_items(user_id: int):
                 purchase_count = frequent_items.purchase_count + 1,
                 last_purchased = CURRENT_TIMESTAMP,
                 price = EXCLUDED.price,
-                aisle = EXCLUDED.aisle
+                aisle = EXCLUDED.aisle,
+                image_url = EXCLUDED.image_url
         """, (user_id,))
 
 def get_frequent_items(limit: int = 20) -> List[Dict]:
