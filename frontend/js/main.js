@@ -27,41 +27,36 @@ loadCart();
 loadFrequentItems();
 
 // Frequently bought items functions
-function loadFrequentItems() {
-    console.log('⭐ Loading frequently bought items...');
-    const lists = getSavedLists();
+async function loadFrequentItems() {
+    console.log('⭐ Loading frequently bought items from database...');
 
-    if (lists.length === 0) {
-        console.log('  No saved lists found');
-        return;
-    }
+    try {
+        const response = await fetch('/api/frequent');
+        const data = await response.json();
+        const items = data.items || [];
 
-    // Count item occurrences across all lists
-    const itemCounts = {};
-    lists.forEach(list => {
-        list.items.forEach(item => {
-            const key = item.name;
-            if (!itemCounts[key]) {
-                itemCounts[key] = {
-                    product: item,
-                    count: 0
-                };
-            }
-            itemCounts[key].count++;
-        });
-    });
+        if (items.length === 0) {
+            console.log('  No frequent items found in database');
+            return;
+        }
 
-    // Sort by frequency, take top 8
-    const frequentItems = Object.values(itemCounts)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8)
-        .filter(item => item.count >= 2); // Only show items bought 2+ times
+        // Transform database format to match what renderFrequentItems expects
+        const frequentItems = items.slice(0, 8).map(item => ({
+            product: {
+                name: item.product_name,
+                price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                aisle: item.aisle,
+                image: item.image_url,
+                is_sold_by_weight: item.is_sold_by_weight || false
+            },
+            count: item.purchase_count
+        }));
 
-    if (frequentItems.length > 0) {
-        console.log('✅ Found', frequentItems.length, 'frequently bought items');
+        console.log('✅ Found', frequentItems.length, 'frequently bought items from database');
         renderFrequentItems(frequentItems);
-    } else {
-        console.log('  No frequently bought items yet (need 2+ purchases)');
+
+    } catch (error) {
+        console.log('  No frequent items yet (expected on first use)');
     }
 }
 
