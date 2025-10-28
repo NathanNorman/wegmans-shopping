@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict
-from src.scraper.wegmans_scraper import WegmansScraper
+from src.scraper.algolia_direct import AlgoliaDirectScraper
 from src.database import get_cached_search, cache_search_results
 from config.settings import settings
 import logging
@@ -9,8 +9,8 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# NO persistent scraper - create on-demand and close after use
-# This saves ~200-300MB RAM when idle (perfect for free tier!)
+# Direct Algolia scraper (no browser needed!)
+scraper = AlgoliaDirectScraper()
 
 class SearchRequest(BaseModel):
     search_term: str
@@ -19,9 +19,9 @@ class SearchRequest(BaseModel):
 @router.post("/search")
 async def search_products(search: SearchRequest, background_tasks: BackgroundTasks):
     """
-    Search for products (with caching)
+    Search for products via direct Algolia API (with caching)
 
-    Returns products from cache if available, otherwise scrapes Wegmans
+    Returns products from cache if available, otherwise queries Algolia directly
     """
 
     # Check cache first
@@ -33,36 +33,31 @@ async def search_products(search: SearchRequest, background_tasks: BackgroundTas
             "from_cache": True
         }
 
-    # Not in cache, scrape Wegmans
-    logger.info(f"⚡ Cache miss - Starting scraper for '{search.search_term}'")
+    # Not in cache, query Algolia directly (NO BROWSER!)
+    logger.info(f"⚡ Cache miss - Querying Algolia API for '{search.search_term}'")
 
-    # Create scraper on-demand (saves memory when idle)
-    async with WegmansScraper(
-        headless=settings.SCRAPER_HEADLESS,
-        store_location=settings.STORE_LOCATION
-    ) as scraper:
-        try:
-            products = await scraper.search_products(
-                search.search_term,
-                max_results=search.max_results
-            )
+    try:
+        products = scraper.search_products(
+            search.search_term,
+            max_results=search.max_results
+        )
 
-            logger.info(f"✅ Scraping complete - Found {len(products)} products")
+        logger.info(f"✅ Search complete - Found {len(products)} products in ~1 second!")
 
-            # Cache results in background
-            background_tasks.add_task(cache_search_results, search.search_term, products)
+        # Cache results in background
+        background_tasks.add_task(cache_search_results, search.search_term, products)
 
-            return {
-                "products": products,
-                "from_cache": False
-            }
+        return {
+            "products": products,
+            "from_cache": False
+        }
 
-        except Exception as e:
-            logger.error(f"❌ Search failed: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Search failed: {str(e)}"
-            )
+    except Exception as e:
+        logger.error(f"❌ Search failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search failed: {str(e)}"
+        )
 
 @router.get("/frequent")
 async def get_frequent():
