@@ -138,17 +138,32 @@ def cache_search_results(search_term: str, results: List[Dict]):
 # === Saved Lists Operations ===
 
 def get_user_lists(user_id: int) -> List[Dict]:
-    """Get all saved lists for user"""
+    """Get all saved lists for user with their items"""
     with get_db() as cursor:
+        # Get all lists
         cursor.execute("""
-            SELECT l.*, COUNT(li.id) as item_count
+            SELECT l.id, l.name, l.created_at,
+                   COUNT(li.id) as item_count,
+                   COALESCE(SUM(li.quantity), 0) as total_quantity,
+                   COALESCE(SUM(li.price * li.quantity), 0) as total_price
             FROM saved_lists l
             LEFT JOIN saved_list_items li ON l.id = li.list_id
             WHERE l.user_id = %s
-            GROUP BY l.id
+            GROUP BY l.id, l.name, l.created_at
             ORDER BY l.created_at DESC
         """, (user_id,))
-        return cursor.fetchall()
+        lists = cursor.fetchall()
+
+        # For each list, fetch its items
+        for list_obj in lists:
+            cursor.execute("""
+                SELECT product_name, price, quantity, aisle, is_sold_by_weight
+                FROM saved_list_items
+                WHERE list_id = %s
+            """, (list_obj['id'],))
+            list_obj['items'] = cursor.fetchall()
+
+        return lists
 
 def save_cart_as_list(user_id: int, list_name: str) -> int:
     """Save current cart as a list"""
