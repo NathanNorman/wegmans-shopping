@@ -190,9 +190,12 @@ class WegmansScraper:
             logger.info("ℹ️  Route interception already enabled (reusing session)")
 
         # Set store location only once per session
-        if not self.store_location_set:
-            await self._set_store_location()
-            self.store_location_set = True
+        # DISABLED: Store location setting via UI times out (30s wasted per search)
+        # Wegmans shows all products anyway, so this isn't critical
+        # if not self.store_location_set:
+        #     await self._set_store_location()
+        #     self.store_location_set = True
+        logger.info("ℹ️  Skipping store location UI (not required, saves 30s)")
 
         # Navigate to search page
         search_url = f"{self.SEARCH_URL}?query={query}"
