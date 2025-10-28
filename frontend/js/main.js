@@ -564,8 +564,11 @@ function removeFromCart(index) {
     itemIndexToDelete = index;
     const item = cart[index];
 
+    // Handle field name differences
+    const displayName = item.product_name || item.name;
+
     document.getElementById('deleteMessage').textContent =
-        `Remove "${item.name}" from your cart?`;
+        `Remove "${displayName}" from your cart?`;
 
     openModal('deleteModal');
 }
@@ -727,12 +730,20 @@ function generateMarkdown() {
     sortedAisles.forEach(aisle => {
         byAisle[aisle].forEach(item => {
             const qty = item.quantity;
-            const price = parseFloat(item.price.replace('$', ''));
+
+            // Handle both string ("$2.49") and number (2.49) from database
+            const price = typeof item.price === 'string'
+                ? parseFloat(item.price.replace('$', ''))
+                : parseFloat(item.price);
             const itemSubtotal = price * qty;
             subtotal += itemSubtotal;
             totalItems += qty;
 
-            markdown += `| **${aisle}** | ${qty}x | ${item.name} | ${item.price} | $${itemSubtotal.toFixed(2)} |\n`;
+            // Handle field name differences
+            const displayName = item.product_name || item.name;
+            const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+            markdown += `| **${aisle}** | ${qty}x | ${displayName} | ${displayPrice} | $${itemSubtotal.toFixed(2)} |\n`;
         });
     });
 
@@ -813,7 +824,10 @@ function saveCurrentList() {
 function calculateTotal() {
     let subtotal = 0;
     cart.forEach(item => {
-        const price = parseFloat(item.price.replace('$', ''));
+        // Handle both string ("$2.49") and number (2.49) from database
+        const price = typeof item.price === 'string'
+            ? parseFloat(item.price.replace('$', ''))
+            : parseFloat(item.price);
         subtotal += price * item.quantity;
     });
     const tax = subtotal * NC_TAX_RATE;
