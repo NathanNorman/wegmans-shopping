@@ -255,9 +255,10 @@ class WegmansScraper:
         await self.page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
 
         # Wait for Algolia API calls to complete (poll instead of fixed wait)
-        # NOTE: In production (Render), Algolia calls take 12-25 seconds to arrive
-        logger.info("⏳ Waiting for Algolia API responses (max 30 seconds)...")
-        max_wait = 30  # Maximum 30 seconds (increased for Render's slower response time)
+        # NOTE: In production (Render), Algolia calls take 30-70 seconds to arrive!
+        # The calls with actual products (storeNumber:69) come last
+        logger.info("⏳ Waiting for Algolia API responses (max 75 seconds)...")
+        max_wait = 75  # Maximum 75 seconds (Render is VERY slow)
         check_interval = 0.5  # Check every 500ms
         elapsed = 0
 
