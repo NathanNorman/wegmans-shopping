@@ -650,17 +650,25 @@ function viewFinalList() {
     sortedAisles.forEach(aisle => {
         byAisle[aisle].forEach(item => {
             const qty = item.quantity;
-            const price = parseFloat(item.price.replace('$', ''));
+
+            // Handle both string ("$2.49") and number (2.49) from database
+            const price = typeof item.price === 'string'
+                ? parseFloat(item.price.replace('$', ''))
+                : parseFloat(item.price);
             const itemSubtotal = price * qty;
             subtotal += itemSubtotal;
             totalItems += qty;
+
+            // Handle field name differences (database vs local)
+            const displayName = item.product_name || item.name;
+            const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
 
             html += `
                 <tr>
                     <td><strong>${escapeHtml(aisle)}</strong></td>
                     <td>${qty}x</td>
-                    <td>${escapeHtml(item.name)}</td>
-                    <td>${escapeHtml(item.price)}</td>
+                    <td>${escapeHtml(displayName)}</td>
+                    <td>${escapeHtml(displayPrice)}</td>
                     <td>$${itemSubtotal.toFixed(2)}</td>
                 </tr>
             `;
