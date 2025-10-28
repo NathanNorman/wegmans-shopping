@@ -239,16 +239,24 @@ class WegmansScraper:
         check_interval = 0.5  # Check every 500ms
         elapsed = 0
 
+        # Track when we first got a response
+        first_response_time = None
+
         while elapsed < max_wait:
             if len(self.current_api_responses) > 0:
-                logger.info(f"⚡ Got API response after {elapsed}s! Waiting 0.5s more for any additional responses...")
-                # Give it a tiny bit more time to get all responses
-                await asyncio.sleep(0.5)
-                break
+                if first_response_time is None:
+                    first_response_time = elapsed
+                    logger.info(f"⚡ Got first API response after {elapsed}s! Waiting 3 more seconds for additional responses...")
+
+                # After getting first response, wait 3 more seconds for additional ones
+                if elapsed >= (first_response_time + 3.0):
+                    logger.info(f"✅ Captured {len(self.current_api_responses)} response(s) - stopping wait")
+                    break
+
             await asyncio.sleep(check_interval)
             elapsed += check_interval
 
-        logger.info(f"⏱️  Wait complete. Captured {len(self.current_api_responses)} API response(s) in {elapsed}s")
+        logger.info(f"⏱️  Wait complete. Captured {len(self.current_api_responses)} API response(s) in {elapsed:.1f}s")
 
         # Process captured API responses
         if self.current_api_responses:
