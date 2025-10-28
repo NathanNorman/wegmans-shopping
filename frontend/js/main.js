@@ -775,16 +775,17 @@ function downloadMarkdown() {
 
 // ==================== SAVED LISTS MANAGEMENT ====================
 
+// Deprecated: Lists are now stored in database
 function getSavedLists() {
-    const lists = localStorage.getItem('wegmans_saved_lists');
-    return lists ? JSON.parse(lists) : [];
+    console.warn('⚠️ getSavedLists() is deprecated - use showPastLists() API call instead');
+    return [];
 }
 
 function saveSavedLists(lists) {
-    localStorage.setItem('wegmans_saved_lists', JSON.stringify(lists));
+    console.warn('⚠️ saveSavedLists() is deprecated - lists are stored in database');
 }
 
-function saveCurrentList() {
+async function saveCurrentList() {
     const listName = document.getElementById('saveListName').value.trim();
     if (!listName) {
         showToast('Please enter a list name', true);
@@ -796,24 +797,29 @@ function saveCurrentList() {
         return;
     }
 
-    const lists = getSavedLists();
-    const newList = {
-        id: Date.now(),
-        name: listName,
-        date: new Date().toISOString(),
-        items: JSON.parse(JSON.stringify(cart)), // Deep copy
-        itemCount: cart.reduce((sum, item) => sum + item.quantity, 0),
-        total: calculateTotal()
-    };
+    try {
+        // Save to database via API
+        const response = await fetch('/api/lists/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: listName })
+        });
 
-    lists.unshift(newList); // Add to beginning
-    saveSavedLists(lists);
+        const data = await response.json();
 
-    document.getElementById('saveListName').value = '';
-    showToast(`✓ Saved "${listName}"!`);
+        if (data.success) {
+            document.getElementById('saveListName').value = '';
+            showToast(`✓ Saved "${listName}" to database!`);
 
-    // Refresh frequently bought items
-    loadFrequentItems();
+            // Refresh frequently bought items
+            loadFrequentItems();
+        } else {
+            showToast('Failed to save list', true);
+        }
+    } catch (error) {
+        console.error('Save list error:', error);
+        showToast('Failed to save list', true);
+    }
 }
 
 function calculateTotal() {
@@ -829,154 +835,236 @@ function calculateTotal() {
     return subtotal + tax;
 }
 
-function showPastLists() {
-    const lists = getSavedLists();
+async function showPastLists() {
     const container = document.getElementById('savedListsContainer');
 
-    if (lists.length === 0) {
-        container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No saved lists yet</p><p class="text-xs">Complete a shopping list and save it to see it here!</p></div>';
-    } else {
-        let html = '';
-        lists.forEach(list => {
-            const date = new Date(list.date);
-            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    try {
+        // Fetch lists from database API
+        const response = await fetch('/api/lists');
+        const data = await response.json();
+        const lists = data.lists || [];
 
-            html += `
-                <div class="saved-list-item">
-                    <div class="saved-list-header">
-                        <div class="saved-list-name">${escapeHtml(list.name)}</div>
-                        <div class="saved-list-date">${dateStr}</div>
-                    </div>
-                    <div class="saved-list-meta">
-                        ${list.items.length} unique items • ${list.itemCount} total • $${list.total.toFixed(2)}
-                    </div>
+        if (lists.length === 0) {
+            container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No saved lists yet</p><p class="text-xs">Complete a shopping list and save it to see it here!</p></div>';
+        } else {
+            let html = '';
+            lists.forEach(list => {
+                const date = new Date(list.created_at);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-                    <div class="saved-list-items-preview">
-            `;
-
-            // Show individual items with quick-add buttons
-            list.items.forEach((item, index) => {
                 html += `
-                    <div class="saved-list-item-row">
-                        <div class="saved-list-item-info">
-                            <span class="saved-list-item-qty">${item.quantity}×</span>
-                            <span class="saved-list-item-name">${escapeHtml(item.name)}</span>
-                            <span style="color: var(--text-secondary);">${escapeHtml(item.price)}</span>
+                    <div class="saved-list-item">
+                        <div class="saved-list-header">
+                            <div class="saved-list-name">${escapeHtml(list.name)}</div>
+                            <div class="saved-list-date">${dateStr}</div>
                         </div>
-                        <button class="saved-list-item-add" onclick='showQuantityModal(${JSON.stringify(item)})'>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Add
-                        </button>
+                        <div class="saved-list-meta">
+                            ${list.items.length} unique items • ${list.total_quantity} total • $${list.total_price.toFixed(2)}
+                        </div>
+
+                        <div class="saved-list-items-preview">
+                `;
+
+                // Show individual items with quick-add buttons
+                list.items.forEach((item, index) => {
+                    // Handle database field names
+                    const itemData = {
+                        name: item.product_name,
+                        price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                        aisle: item.aisle,
+                        image: item.image_url,
+                        search_term: item.search_term || 'saved',
+                        is_sold_by_weight: item.is_sold_by_weight || false,
+                        unit_price: item.unit_price || null
+                    };
+
+                    const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+                    html += `
+                        <div class="saved-list-item-row">
+                            <div class="saved-list-item-info">
+                                <span class="saved-list-item-qty">${item.quantity}×</span>
+                                <span class="saved-list-item-name">${escapeHtml(item.product_name)}</span>
+                                <span style="color: var(--text-secondary);">${escapeHtml(displayPrice)}</span>
+                            </div>
+                            <button class="saved-list-item-add" onclick='showQuantityModal(${JSON.stringify(itemData)})'>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Add
+                            </button>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+
+                        <div class="saved-list-actions">
+                            <button class="btn-load-all" onclick="replaceCartWithList(${list.id})" style="background: var(--primary-red); color: var(--white);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Load This List
+                            </button>
+                            <button class="btn-load-all" onclick="addListToCart(${list.id})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Add to Current
+                            </button>
+                            <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 `;
             });
+            container.innerHTML = html;
+        }
 
-            html += `
-                    </div>
-
-                    <div class="saved-list-actions">
-                        <button class="btn-load-all" onclick="replaceCartWithList(${list.id})" style="background: var(--primary-red); color: var(--white);">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Load This List
-                        </button>
-                        <button class="btn-load-all" onclick="addListToCart(${list.id})">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Add to Current
-                        </button>
-                        <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+        openModal('savedListsModal');
+    } catch (error) {
+        console.error('Error loading saved lists:', error);
+        showToast('Failed to load saved lists', true);
     }
-
-    openModal('savedListsModal');
 }
 
 function closeSavedLists() {
     closeModal('savedListsModal');
 }
 
-function replaceCartWithList(listId) {
-    const lists = getSavedLists();
-    const list = lists.find(l => l.id === listId);
+async function replaceCartWithList(listId) {
+    try {
+        console.log('📋 Loading list from database:', listId);
 
-    if (!list) {
-        showToast('List not found', true);
-        return;
-    }
+        // Call API to load list (replaces current cart)
+        const response = await fetch(`/api/lists/${listId}/load`, {
+            method: 'POST'
+        });
 
-    console.log('📋 Loading list (replacing current cart):', list.name);
-
-    // Replace entire cart with this list
-    cart = JSON.parse(JSON.stringify(list.items)); // Deep copy
-
-    saveCart();
-    renderCart();
-    closeSavedLists();
-    showToast(`✓ Loaded "${list.name}" (${list.items.length} items)`);
-}
-
-function addListToCart(listId) {
-    const lists = getSavedLists();
-    const list = lists.find(l => l.id === listId);
-
-    if (!list) {
-        showToast('List not found', true);
-        return;
-    }
-
-    console.log('➕ Adding list items to current cart:', list.name);
-
-    // Add items from saved list to current cart
-    let addedCount = 0;
-    list.items.forEach(savedItem => {
-        const existing = cart.find(item => item.name === savedItem.name);
-        if (existing) {
-            existing.quantity += savedItem.quantity;
-        } else {
-            cart.push(JSON.parse(JSON.stringify(savedItem)));
-            addedCount++;
+        if (!response.ok) {
+            throw new Error(`Failed to load list: ${response.status}`);
         }
-    });
 
-    saveCart();
-    renderCart();
-    closeSavedLists();
-    showToast(`✓ Added ${addedCount} new items to cart`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Update cart from server response
+            cart = data.cart || [];
+            renderCart();
+            closeSavedLists();
+            showToast(`✓ Loaded "${data.list_name}" (${cart.length} items)`);
+        } else {
+            showToast('Failed to load list', true);
+        }
+    } catch (error) {
+        console.error('Error loading list:', error);
+        showToast('Failed to load list', true);
+    }
 }
 
-function deleteSavedList(listId) {
-    const lists = getSavedLists();
-    const list = lists.find(l => l.id === listId);
+async function addListToCart(listId) {
+    try {
+        console.log('➕ Adding list items to current cart from database:', listId);
 
-    if (!list) return;
+        // First fetch the list details
+        const response = await fetch('/api/lists');
+        const data = await response.json();
+        const lists = data.lists || [];
+        const list = lists.find(l => l.id === listId);
 
-    if (confirm(`Delete "${list.name}"?`)) {
-        const filtered = lists.filter(l => l.id !== listId);
-        saveSavedLists(filtered);
-        showPastLists(); // Refresh display
-        showToast('✓ List deleted');
+        if (!list) {
+            showToast('List not found', true);
+            return;
+        }
 
-        // Refresh frequently bought items
-        loadFrequentItems();
+        // Add items from saved list to current cart via API
+        let addedCount = 0;
+        for (const savedItem of list.items) {
+            try {
+                const addResponse = await fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: savedItem.product_name,
+                        price: typeof savedItem.price === 'number' ? `$${savedItem.price.toFixed(2)}` : savedItem.price,
+                        quantity: savedItem.quantity,
+                        aisle: savedItem.aisle,
+                        image: savedItem.image_url,
+                        search_term: savedItem.search_term || 'saved',
+                        is_sold_by_weight: savedItem.is_sold_by_weight || false,
+                        unit_price: savedItem.unit_price || null
+                    })
+                });
+
+                const addData = await addResponse.json();
+                cart = addData.cart;
+                addedCount++;
+            } catch (error) {
+                console.error('Error adding item:', savedItem.product_name, error);
+            }
+        }
+
+        renderCart();
+        closeSavedLists();
+        showToast(`✓ Added ${addedCount} items to cart`);
+    } catch (error) {
+        console.error('Error adding list to cart:', error);
+        showToast('Failed to add list to cart', true);
+    }
+}
+
+async function deleteSavedList(listId) {
+    try {
+        // First fetch the list to get its name for confirmation
+        const response = await fetch('/api/lists');
+        const data = await response.json();
+        const lists = data.lists || [];
+        const list = lists.find(l => l.id === listId);
+
+        if (!list) {
+            showToast('List not found', true);
+            return;
+        }
+
+        if (!confirm(`Delete "${list.name}"?`)) {
+            return;
+        }
+
+        console.log('🗑️ Deleting list from database:', listId);
+
+        // Call API to delete list
+        const deleteResponse = await fetch(`/api/lists/${listId}`, {
+            method: 'DELETE'
+        });
+
+        if (!deleteResponse.ok) {
+            throw new Error(`Failed to delete list: ${deleteResponse.status}`);
+        }
+
+        const deleteData = await deleteResponse.json();
+
+        if (deleteData.success) {
+            showPastLists(); // Refresh display
+            showToast('✓ List deleted');
+
+            // Refresh frequently bought items
+            loadFrequentItems();
+        } else {
+            showToast('Failed to delete list', true);
+        }
+    } catch (error) {
+        console.error('Error deleting list:', error);
+        showToast('Failed to delete list', true);
     }
 }
 
