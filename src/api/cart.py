@@ -85,5 +85,13 @@ async def complete_shopping(request: Request):
     user_id = request.state.user_id
     update_frequent_items(user_id)
     clear_cart(user_id)
-    
+
     return {"success": True, "message": "Shopping completed!"}
+
+@router.post("/cart/update-frequent")
+async def update_frequent(request: Request):
+    """Update frequent items from cart WITHOUT clearing cart"""
+    user_id = request.state.user_id
+    update_frequent_items(user_id)
+
+    return {"success": True, "message": "Frequent items updated!"}

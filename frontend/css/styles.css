@@ -1615,10 +1615,25 @@ input:focus-visible {
         transform: rotate(-90deg);
     }
 
+    .cart-items,
+    .cart-totals,
+    .cart-actions {
+        max-height: 500px;
+        overflow: hidden;
+        transition: max-height 0.4s ease, opacity 0.3s ease;
+    }
+
     .cart-section.collapsed .cart-items,
     .cart-section.collapsed .cart-totals,
     .cart-section.collapsed .cart-actions {
-        display: none;
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .cart-section {
+        transition: max-height 0.4s ease;
     }
 
     .cart-section.collapsed {
@@ -1713,10 +1728,27 @@ input:focus-visible {
 
     /* Toast positioning */
     .toast {
-        left: var(--space-4);
-        right: var(--space-4);
-        bottom: var(--space-4);
+        left: 50%;
+        right: auto;
+        top: var(--space-4);
+        bottom: auto;
+        transform: translateX(-50%);
         min-width: auto;
+    }
+
+    .toast.show {
+        animation: toastInTop 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+    }
+
+    @keyframes toastInTop {
+        from {
+            transform: translate(-50%, -100px);
+            opacity: 0;
+        }
+        to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
     }
 }
 

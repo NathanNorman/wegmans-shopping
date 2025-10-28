@@ -818,9 +818,9 @@ async function saveCurrentList() {
         if (data.success) {
             document.getElementById('saveListName').value = '';
 
-            // Update frequent items in database (before clearing cart)
+            // Update frequent items in database (WITHOUT clearing cart)
             try {
-                await fetch('/api/cart/complete', {
+                await fetch('/api/cart/update-frequent', {
                     method: 'POST'
                 });
                 console.log('✅ Updated frequent items in database');
@@ -828,10 +828,12 @@ async function saveCurrentList() {
                 console.warn('Failed to update frequent items:', e);
             }
 
-            showToast(`✓ Saved "${listName}" to database!`);
+            showToast(`✓ Saved "${listName}"!`);
 
             // Refresh frequently bought items display
             loadFrequentItems();
+
+            // Cart remains intact - user can save multiple times or clear manually
         } else {
             showToast('Failed to save list', true);
         }
