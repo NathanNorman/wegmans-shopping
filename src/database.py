@@ -142,14 +142,14 @@ def get_user_lists(user_id: int) -> List[Dict]:
     with get_db() as cursor:
         # Get all lists
         cursor.execute("""
-            SELECT l.id, l.name, l.created_at,
+            SELECT l.id, l.name, l.created_at, l.is_auto_saved,
                    COUNT(li.id) as item_count,
                    COALESCE(SUM(li.quantity), 0) as total_quantity,
                    COALESCE(SUM(li.price * li.quantity), 0) as total_price
             FROM saved_lists l
             LEFT JOIN saved_list_items li ON l.id = li.list_id
             WHERE l.user_id = %s
-            GROUP BY l.id, l.name, l.created_at
+            GROUP BY l.id, l.name, l.created_at, l.is_auto_saved
             ORDER BY l.created_at DESC
         """, (user_id,))
         lists = cursor.fetchall()

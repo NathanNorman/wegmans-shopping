@@ -1,5 +1,7 @@
 # Auto-Save Shopping List Redesign - Full Version
 
+WORKING_DIRECTORY: .claude-work/impl-20251028-143855-10197
+
 **Goal:** Make the shopping list app intuitive and automatic, removing manual save friction.
 
 **Timeline:** ~2 hours implementation

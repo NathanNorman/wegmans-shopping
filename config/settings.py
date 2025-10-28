@@ -5,9 +5,13 @@ Supports environment variables for deployment flexibility.
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Base directory (project root)
 BASE_DIR = Path(__file__).parent.parent
+
+# Load .env file from project root
+load_dotenv(BASE_DIR / ".env")
 
 class Settings:
     """Application settings"""

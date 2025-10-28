@@ -4,6 +4,77 @@ const NC_TAX_RATE = 0.04;
 console.log('🚀 Wegmans Shopping List Builder initialized');
 console.log('📝 Console logging enabled for debugging');
 
+// Auto-save configuration
+let autoSaveTimer = null;
+const AUTO_SAVE_DELAY = 2000; // 2 seconds after last change
+
+function getTodaysListName() {
+    return new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    }); // "Monday, October 28, 2025"
+}
+
+async function autoSaveCart() {
+    if (cart.length === 0) {
+        console.log('📭 Cart empty, skipping auto-save');
+        return;
+    }
+
+    const listName = getTodaysListName();
+
+    try {
+        const response = await fetch('/api/lists/auto-save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: listName })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const action = data.updated ? 'updated' : 'created';
+            console.log(`💾 Auto-saved to "${listName}" (${action})`);
+
+            // Update UI indicator
+            updateTodaysListIndicator();
+        }
+    } catch (error) {
+        console.error('Auto-save failed:', error);
+    }
+}
+
+function scheduleAutoSave() {
+    // Debounce: wait 2 seconds after last change before saving
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(autoSaveCart, AUTO_SAVE_DELAY);
+    console.log('⏰ Auto-save scheduled in 2 seconds...');
+}
+
+async function updateTodaysListIndicator() {
+    const indicator = document.getElementById('autoSaveIndicator');
+    const text = document.getElementById('autoSaveText');
+
+    if (!indicator || !text) return; // Elements not yet loaded
+
+    try {
+        const response = await fetch('/api/lists/today');
+        const data = await response.json();
+
+        if (data.exists) {
+            const list = data.list;
+            text.textContent = `Saved to: ${list.name} (${list.item_count} items)`;
+            indicator.style.display = 'flex';
+        } else {
+            indicator.style.display = 'none';
+        }
+    } catch (e) {
+        indicator.style.display = 'none';
+    }
+}
+
 // Load saved cart from API
 console.log('💾 Loading saved cart...');
 async function loadCart() {
@@ -20,6 +91,9 @@ async function loadCart() {
     } catch (err) {
         console.log('ℹ️ No previous cart to load (expected on first use)');
     }
+
+    // Update today's list indicator after cart loads
+    updateTodaysListIndicator();
 }
 loadCart();
 
@@ -98,7 +172,7 @@ function renderFrequentItems(frequentItems) {
                 <div class="frequent-item-name">${escapeHtml(product.name)}</div>
                 <div class="frequent-item-footer">
                     <span class="frequent-item-price">${escapeHtml(product.price)}</span>
-                    <span class="frequent-item-badge" title="Bought ${item.count} times in past lists">${item.count}× bought</span>
+                    <span class="frequent-item-badge" title="Appears in ${item.count} past lists">In ${item.count} lists</span>
                 </div>
             </div>
         `;
@@ -184,6 +258,9 @@ async function confirmAddQuantity() {
         // Update cart from server response
         cart = data.cart;
         renderCart();
+
+        // AUTO-SAVE after cart change
+        scheduleAutoSave();
 
         showToast(`✓ Added ${quantity} to cart`);
 
@@ -493,7 +570,8 @@ function renderCart() {
         cartItems.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">Your cart is empty</p><p class="text-xs">Start searching to add items!</p></div>';
         cartCount.textContent = '0';
         document.getElementById('cartTotals').style.display = 'none';
-        viewListBtn.style.display = 'none';
+        document.getElementById('printListBtn').style.display = 'none';
+        document.getElementById('saveCustomBtn').style.display = 'none';
         return;
     }
 
@@ -542,21 +620,44 @@ function renderCart() {
     document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
     document.getElementById('total').textContent = `$${total.toFixed(2)}`;
     document.getElementById('cartTotals').style.display = 'block';
-    viewListBtn.style.display = 'block';
+    document.getElementById('printListBtn').style.display = 'block';
+    document.getElementById('saveCustomBtn').style.display = 'block';
 
     console.log('✅ Cart rendered:', totalItems, 'items, $' + total.toFixed(2), 'total');
 }
 
-function updateQuantity(index, newQty) {
-    const qty = parseInt(newQty);
-    if (qty < 1) {
-        showToast('Quantity must be at least 1', true);
+async function updateQuantity(index, newQty) {
+    const item = cart[index];
+    const qty = parseFloat(newQty);
+
+    if (qty < 0.1) {
+        showToast('Quantity must be at least 0.1', true);
         renderCart();
         return;
     }
-    cart[index].quantity = qty;
-    saveCart();
-    renderCart();
+
+    try {
+        const response = await fetch('/api/cart/quantity', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                cart_item_id: item.id,
+                quantity: qty
+            })
+        });
+
+        const data = await response.json();
+        cart = data.cart;
+        renderCart();
+
+        // AUTO-SAVE after cart change
+        scheduleAutoSave();
+
+    } catch (error) {
+        showToast('Failed to update quantity', true);
+        console.error('Update quantity error:', error);
+        renderCart();
+    }
 }
 
 // Delete modal state
@@ -595,6 +696,10 @@ async function confirmDelete() {
             const data = await response.json();
             cart = data.cart;
             renderCart();
+
+            // AUTO-SAVE after cart change
+            scheduleAutoSave();
+
             showToast('✓ Item removed');
             console.log('🗑️ Removed:', itemName);
         } catch (error) {
@@ -608,7 +713,11 @@ async function confirmDelete() {
 
 async function clearCart() {
     if (cart.length === 0) return;
-    if (!confirm('Clear entire cart?')) return;
+    openModal('clearCartButtonModal');
+}
+
+async function confirmClearCart() {
+    closeModal('clearCartButtonModal');
 
     try {
         const response = await fetch('/api/cart', {
@@ -868,96 +977,120 @@ async function showPastLists() {
         if (lists.length === 0) {
             container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No saved lists yet</p><p class="text-xs">Complete a shopping list and save it to see it here!</p></div>';
         } else {
+            // Separate auto-saved (by date) from custom named
+            const autoSaved = lists.filter(l => l.is_auto_saved);
+            const customNamed = lists.filter(l => !l.is_auto_saved);
+
             let html = '';
-            lists.forEach(list => {
-                const date = new Date(list.created_at);
-                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-                html += `
-                    <div class="saved-list-item">
-                        <div class="saved-list-header">
-                            <div class="saved-list-name">${escapeHtml(list.name)}</div>
-                            <div class="saved-list-date">${dateStr}</div>
-                        </div>
-                        <div class="saved-list-meta">
-                            ${list.items.length} unique items • ${list.total_quantity} total • $${list.total_price.toFixed(2)}
-                        </div>
-
-                        <div class="saved-list-items-preview">
-                `;
-
-                // Show individual items with quick-add buttons
-                list.items.forEach((item, index) => {
-                    // Handle database field names
-                    const itemData = {
-                        name: item.product_name,
-                        price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
-                        aisle: item.aisle,
-                        image: item.image_url,
-                        search_term: item.search_term || 'saved',
-                        is_sold_by_weight: item.is_sold_by_weight || false,
-                        unit_price: item.unit_price || null
-                    };
-
-                    const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
-
-                    html += `
-                        <div class="saved-list-item-row">
-                            <div class="saved-list-item-info">
-                                <span class="saved-list-item-qty">${item.quantity}×</span>
-                                <span class="saved-list-item-name">${escapeHtml(item.product_name)}</span>
-                                <span style="color: var(--text-secondary);">${escapeHtml(displayPrice)}</span>
-                            </div>
-                            <button class="saved-list-item-add" onclick='showQuantityModal(${JSON.stringify(itemData)})'>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                Add
-                            </button>
-                        </div>
-                    `;
+            // Show auto-saved lists (shopping trips by date)
+            if (autoSaved.length > 0) {
+                html += '<h3 style="margin: 0 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-100); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📅 Shopping History</h3>';
+                autoSaved.forEach(list => {
+                    html += renderListCard(list);
                 });
+            }
 
-                html += `
-                        </div>
+            // Show custom named lists
+            if (customNamed.length > 0) {
+                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--success-green); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📝 Custom Lists</h3>';
+                customNamed.forEach(list => {
+                    html += renderListCard(list);
+                });
+            }
 
-                        <div class="saved-list-actions">
-                            <button class="btn-load-all" onclick="replaceCartWithList(${list.id})" style="background: var(--primary-red); color: var(--white);">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                Load This List
-                            </button>
-                            <button class="btn-load-all" onclick="addListToCart(${list.id})">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                Add to Current
-                            </button>
-                            <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
             container.innerHTML = html;
         }
 
         openModal('savedListsModal');
     } catch (error) {
-        console.error('Error loading saved lists:', error);
-        showToast('Failed to load saved lists', true);
+        console.error('Error loading past lists:', error);
     }
 }
+
+function renderListCard(list) {
+    const date = new Date(list.created_at);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    let html = `
+        <div class="saved-list-item">
+            <div class="saved-list-header">
+                <div class="saved-list-name">${escapeHtml(list.name)}</div>
+                <div class="saved-list-date">${dateStr}</div>
+            </div>
+            <div class="saved-list-meta">
+                ${list.items.length} unique items • ${list.total_quantity} total • $${list.total_price.toFixed(2)}
+            </div>
+
+            <div class="saved-list-items-preview">
+    `;
+
+    // Show individual items with quick-add buttons
+    list.items.forEach((item, index) => {
+        // Handle database field names
+        const itemData = {
+            name: item.product_name,
+            price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+            aisle: item.aisle,
+            image: item.image_url,
+            search_term: item.search_term || 'saved',
+            is_sold_by_weight: item.is_sold_by_weight || false,
+            unit_price: item.unit_price || null
+        };
+
+        const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+        html += `
+            <div class="saved-list-item-row">
+                <div class="saved-list-item-info">
+                    <span class="saved-list-item-qty">${item.quantity}×</span>
+                    <span class="saved-list-item-name">${escapeHtml(item.product_name)}</span>
+                    <span style="color: var(--text-secondary);">${escapeHtml(displayPrice)}</span>
+                </div>
+                <button class="saved-list-item-add" onclick='showQuantityModal(${JSON.stringify(itemData)})'>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add
+                </button>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+
+            <div class="saved-list-actions">
+                <button class="btn-load-all" onclick="replaceCartWithList(${list.id})" style="background: var(--primary-red); color: var(--white);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Load This List
+                </button>
+                <button class="btn-load-all" onclick="addListToCart(${list.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add to Current
+                </button>
+                <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
 
 function closeSavedLists() {
     closeModal('savedListsModal');
@@ -1057,10 +1190,23 @@ async function deleteSavedList(listId) {
             return;
         }
 
-        if (!confirm(`Delete "${list.name}"?`)) {
-            return;
-        }
+        // Store list ID for confirmation and show modal
+        window.listToDelete = listId;
+        document.getElementById('deleteListMessage').textContent = `Are you sure you want to delete "${list.name}"?`;
+        openModal('deleteListModal');
+    } catch (error) {
+        console.error('Error preparing to delete list:', error);
+        showToast('Failed to delete list', true);
+    }
+}
 
+async function confirmDeleteList() {
+    closeModal('deleteListModal');
+    const listId = window.listToDelete;
+
+    if (!listId) return;
+
+    try {
         console.log('🗑️ Deleting list from database:', listId);
 
         // Call API to delete list
@@ -1108,4 +1254,207 @@ if (window.innerWidth <= 767) {
             console.log('📱 Mobile detected - Cart starts collapsed');
         }
     });
+}
+
+// ===== PRINT FUNCTIONALITY =====
+
+async function printShoppingList() {
+    if (cart.length === 0) {
+        showToast('Cart is empty!', true);
+        return;
+    }
+
+    // Show loading state
+    showToast('⏳ Preparing your list...', false);
+
+    try {
+        // 1. Auto-save one final time
+        await autoSaveCart();
+
+        // 2. Update frequent items (for future recommendations)
+        await fetch('/api/cart/update-frequent', { method: 'POST' });
+
+        // 3. Generate and print
+        const printContent = generatePrintableList();
+
+        // Use iframe approach for better control
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(printContent);
+        iframeDoc.close();
+
+        // Wait for content to load, then print
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+
+        // Clean up iframe and show clear modal after a short delay
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+            openModal('clearCartModal');
+        }, 1000);
+
+    } catch (error) {
+        console.error('Print error:', error);
+        showToast('Failed to prepare list', true);
+    }
+}
+
+async function confirmClearAfterPrint() {
+    closeModal('clearCartModal');
+
+    try {
+        await fetch('/api/cart', { method: 'DELETE' });
+        cart = [];
+        renderCart();
+        showToast('✓ Cart cleared - ready for next trip!');
+    } catch (error) {
+        showToast('Failed to clear cart', true);
+        console.error('Clear cart error:', error);
+    }
+}
+
+function generatePrintableList() {
+    const listName = getTodaysListName();
+    const date = new Date().toLocaleDateString();
+
+    // Organize by aisle
+    const byAisle = {};
+    cart.forEach(item => {
+        const aisle = item.aisle || 'Unknown';
+        if (!byAisle[aisle]) byAisle[aisle] = [];
+        byAisle[aisle].push(item);
+    });
+
+    // Calculate totals
+    let subtotal = 0;
+    cart.forEach(item => {
+        const price = typeof item.price === 'number' ? item.price : parseFloat(item.price.replace('$', ''));
+        subtotal += price * item.quantity;
+    });
+    const tax = subtotal * NC_TAX_RATE;
+    const total = subtotal + tax;
+
+    // Generate HTML for print
+    let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${listName} - Wegmans Shopping List</title>
+            <style>
+                @media print {
+                    @page { margin: 0.4in; }
+                    body { font-family: Arial, sans-serif; font-size: 11px; }
+                }
+                body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
+                h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin: 0 0 8px 0; font-size: 20px; }
+                h2 { color: #333; margin: 12px 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 13px; }
+                .meta { color: #666; font-size: 10px; margin-bottom: 12px; line-height: 1.3; }
+                table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+                th { background: #f5f5f5; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 10px; }
+                td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
+                .qty { text-align: center; font-weight: bold; width: 50px; }
+                .price { text-align: right; width: 70px; }
+                .totals { margin-top: 12px; text-align: right; font-size: 12px; }
+                .totals div { padding: 2px 0; }
+                .grand-total { font-weight: bold; font-size: 14px; color: #ce3f24; border-top: 2px solid #333; padding-top: 6px; margin-top: 6px; }
+                .checkbox { width: 14px; height: 14px; border: 2px solid #999; display: inline-block; margin-right: 6px; vertical-align: middle; }
+            </style>
+        </head>
+        <body>
+            <h1>🛒 Wegmans Shopping List</h1>
+            <div class="meta">
+                <strong>${listName}</strong><br>
+                Printed: ${date}<br>
+                ${cart.length} unique items • ${cart.reduce((sum, i) => sum + i.quantity, 0)} total items
+            </div>
+    `;
+
+    // Group items by aisle
+    const sortedAisles = Object.keys(byAisle).sort();
+
+    sortedAisles.forEach(aisle => {
+        html += `<h2>Aisle: ${aisle}</h2><table>`;
+        html += `<tr><th>☐</th><th>Qty</th><th>Product</th><th>Price</th></tr>`;
+
+        byAisle[aisle].forEach(item => {
+            const name = item.product_name || item.name;
+            const price = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+            html += `
+                <tr>
+                    <td><span class="checkbox"></span></td>
+                    <td class="qty">${item.quantity}×</td>
+                    <td>${escapeHtml(name)}</td>
+                    <td class="price">${price}</td>
+                </tr>
+            `;
+        });
+
+        html += `</table>`;
+    });
+
+    // Totals
+    html += `
+        <div class="totals">
+            <div>Subtotal: $${subtotal.toFixed(2)}</div>
+            <div>Est. Tax (${(NC_TAX_RATE * 100).toFixed(0)}%): $${tax.toFixed(2)}</div>
+            <div class="grand-total">Total: $${total.toFixed(2)}</div>
+        </div>
+
+        <script>
+            window.onload = () => {
+                // Auto-close after printing
+                window.onafterprint = () => window.close();
+            };
+        </script>
+        </body>
+        </html>
+    `;
+
+    return html;
+}
+
+// ===== SAVE CUSTOM LIST =====
+
+async function saveCustomListNow() {
+    const listName = document.getElementById('customListName').value.trim();
+    if (!listName) {
+        showToast('Please enter a list name', true);
+        return;
+    }
+
+    if (cart.length === 0) {
+        showToast('Cart is empty!', true);
+        return;
+    }
+
+    try {
+        // Save to database via API (NOT as auto-saved)
+        const response = await fetch('/api/lists/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: listName })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('customListName').value = '';
+            closeModal('saveListModal');
+            showToast(`✓ Saved "${listName}"!`);
+
+            // Update frequent items
+            await fetch('/api/cart/update-frequent', { method: 'POST' });
+            loadFrequentItems();
+        }
+    } catch (error) {
+        showToast('Failed to save list', true);
+        console.error('Save error:', error);
+    }
 }
