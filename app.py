@@ -50,7 +50,10 @@ async def session_middleware(request: Request, call_next):
     # Get or create user session
     user_id = request.cookies.get("user_id")
     if not user_id:
-        user_id = "1"  # Default user (no auth for now)
+        # Generate unique user ID for new visitors
+        import uuid
+        user_id = str(uuid.uuid4().int)[:12]  # 12-digit unique ID
+        logger.info(f"🆕 New user session created: {user_id}")
 
     request.state.user_id = int(user_id)
     response = await call_next(request)
@@ -58,6 +61,7 @@ async def session_middleware(request: Request, call_next):
     # Set cookie if not present
     if not request.cookies.get("user_id"):
         response.set_cookie("user_id", user_id, max_age=31536000)  # 1 year
+        logger.info(f"🍪 Cookie set for user: {user_id}")
 
     return response
 
