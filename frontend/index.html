@@ -81,7 +81,7 @@
 
         <div class="right-panel">
             <div class="cart-section">
-                <div class="cart-header">
+                <div class="cart-header" onclick="toggleCart()">
                     <span>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
                             <circle cx="9" cy="21" r="1"></circle>
@@ -90,7 +90,12 @@
                         </svg>
                         Your Cart
                     </span>
-                    <span class="cart-count" id="cartCount">0</span>
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span class="cart-count" id="cartCount">0</span>
+                        <svg id="cartToggleIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cart-toggle-icon">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </span>
                 </div>
 
                 <div class="cart-items" id="cartItems">

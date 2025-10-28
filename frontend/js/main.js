@@ -962,3 +962,24 @@ function deleteSavedList(listId) {
         loadFrequentItems();
     }
 }
+
+// Cart toggle for mobile
+function toggleCart() {
+    const cartSection = document.querySelector('.cart-section');
+    const toggleIcon = document.getElementById('cartToggleIcon');
+    
+    cartSection.classList.toggle('collapsed');
+    
+    console.log(cartSection.classList.contains('collapsed') ? '📦 Cart collapsed' : '📦 Cart expanded');
+}
+
+// Initialize cart as collapsed on mobile
+if (window.innerWidth <= 767) {
+    document.addEventListener('DOMContentLoaded', () => {
+        const cartSection = document.querySelector('.cart-section');
+        if (cartSection) {
+            cartSection.classList.add('collapsed');
+            console.log('📱 Mobile detected - Cart starts collapsed');
+        }
+    });
+}

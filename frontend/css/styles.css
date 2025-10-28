@@ -1603,6 +1603,27 @@ input:focus-visible {
         font-size: var(--font-size-xl);
         margin-bottom: var(--space-3);
         padding-bottom: var(--space-3);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .cart-toggle-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .cart-section.collapsed .cart-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .cart-section.collapsed .cart-items,
+    .cart-section.collapsed .cart-totals,
+    .cart-section.collapsed .cart-actions {
+        display: none;
+    }
+
+    .cart-section.collapsed {
+        max-height: 70px;
+        padding-bottom: var(--space-4);
     }
 
     .cart-items {
