@@ -141,6 +141,37 @@ class WegmansScraper:
         except Exception as e:
             logger.warning(f"Error setting store location: {e}")
 
+    async def _set_store_location_fast(self):
+        """
+        Set store location via localStorage (instant, no UI interaction)
+        Raleigh, NC store
+        """
+        try:
+            logger.info(f"⚡ Setting store to Raleigh via localStorage (fast method)")
+
+            # Navigate to homepage first to set domain context
+            await self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=10000)
+
+            # Set Raleigh store in localStorage
+            # Store ID for Raleigh, NC: 86 (common ID across Wegmans)
+            await self.page.evaluate("""
+                () => {
+                    localStorage.setItem('selectedStore', JSON.stringify({
+                        id: '86',
+                        name: 'Raleigh, NC',
+                        address: '7900 Skyland Ridge Pkwy, Raleigh, NC 27617'
+                    }));
+                    localStorage.setItem('storeId', '86');
+                    localStorage.setItem('storeName', 'Raleigh');
+                }
+            """)
+
+            logger.info("✅ Store location set to Raleigh (store ID: 86)")
+
+        except Exception as e:
+            logger.warning(f"⚠️  Could not set store via localStorage: {e}")
+            logger.info("Continuing anyway - Wegmans may still show regional products")
+
     async def search_products(self, query: str, max_results: Optional[int] = None) -> List[Dict]:
         """
         Search for products by intercepting Algolia API responses
@@ -190,12 +221,9 @@ class WegmansScraper:
             logger.info("ℹ️  Route interception already enabled (reusing session)")
 
         # Set store location only once per session
-        # DISABLED: Store location setting via UI times out (30s wasted per search)
-        # Wegmans shows all products anyway, so this isn't critical
-        # if not self.store_location_set:
-        #     await self._set_store_location()
-        #     self.store_location_set = True
-        logger.info("ℹ️  Skipping store location UI (not required, saves 30s)")
+        if not self.store_location_set:
+            await self._set_store_location_fast()
+            self.store_location_set = True
 
         # Navigate to search page
         search_url = f"{self.SEARCH_URL}?query={query}"
