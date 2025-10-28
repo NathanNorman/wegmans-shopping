@@ -500,19 +500,28 @@ function renderCart() {
 
     cart.forEach((item, index) => {
         const qty = item.quantity;
-        const price = parseFloat(item.price.replace('$', ''));
+
+        // Handle both string ("$2.49") and number (2.49) from database
+        const price = typeof item.price === 'string'
+            ? parseFloat(item.price.replace('$', ''))
+            : parseFloat(item.price);
         const itemTotal = price * qty;
         subtotal += itemTotal;
         totalItems += qty;
+
+        // Handle field name differences (database vs local)
+        const displayName = item.product_name || item.name;
+        const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+        const displayAisle = item.aisle || 'Unknown';
 
         html += `
             <div class="cart-item">
                 <input type="number" class="cart-item-qty" value="${qty}" min="1"
                     onchange="updateQuantity(${index}, this.value)">
                 <div class="cart-item-details">
-                    <div class="cart-item-name">${escapeHtml(item.name)}</div>
+                    <div class="cart-item-name">${escapeHtml(displayName)}</div>
                     <div class="cart-item-meta">
-                        ${escapeHtml(item.price)} • Aisle ${escapeHtml(item.aisle)}
+                        ${escapeHtml(displayPrice)} • Aisle ${escapeHtml(displayAisle)}
                     </div>
                 </div>
                 <button class="cart-item-delete" onclick="removeFromCart(${index})">×</button>
