@@ -40,8 +40,16 @@ async function loadFrequentItems() {
             return;
         }
 
+        // Filter to only show items bought 2+ times
+        const frequentlyBought = items.filter(item => item.purchase_count >= 2);
+
+        if (frequentlyBought.length === 0) {
+            console.log('  No items bought 2+ times yet');
+            return;
+        }
+
         // Transform database format to match what renderFrequentItems expects
-        const frequentItems = items.slice(0, 8).map(item => ({
+        const frequentItems = frequentlyBought.slice(0, 8).map(item => ({
             product: {
                 name: item.product_name,
                 price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
@@ -52,7 +60,7 @@ async function loadFrequentItems() {
             count: item.purchase_count
         }));
 
-        console.log('✅ Found', frequentItems.length, 'frequently bought items from database');
+        console.log('✅ Found', frequentItems.length, 'frequently bought items (2+ purchases) from database');
         renderFrequentItems(frequentItems);
 
     } catch (error) {
