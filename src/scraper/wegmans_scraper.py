@@ -199,11 +199,33 @@ class WegmansScraper:
             # Check if this is an Algolia search API call
             if 'algolia' in request.url.lower() and 'queries' in request.url.lower():
                 logger.info(f"🎯 ALGOLIA API CALL INTERCEPTED: {request.url[:150]}")
+
+                # Log REQUEST body (what we're sending TO Algolia)
+                try:
+                    request_body = request.post_data
+                    if request_body:
+                        request_data = json.loads(request_body)
+                        logger.info(f"📤 REQUEST to Algolia: {json.dumps(request_data, indent=2)[:500]}")
+                except:
+                    pass
+
+                # Log RESPONSE body (what Algolia sends back)
                 try:
                     body = await response.body()
                     data = json.loads(body)
                     self.current_api_responses.append(data)
-                    logger.info(f"📦 Captured Algolia API response with {len(data.get('results', []))} result sets")
+
+                    # Log summary of response
+                    total_hits = sum(len(r.get('hits', [])) for r in data.get('results', []))
+                    logger.info(f"📦 Captured Algolia RESPONSE with {len(data.get('results', []))} result sets, {total_hits} total hits")
+
+                    # Log first result details if empty
+                    if total_hits == 0 and data.get('results'):
+                        first_result = data['results'][0] if data['results'] else {}
+                        logger.warning(f"⚠️  EMPTY RESPONSE! First result keys: {list(first_result.keys())[:10]}")
+                        if 'params' in first_result:
+                            logger.info(f"   Query params were: {first_result.get('params', '')[:200]}")
+
                 except Exception as e:
                     logger.warning(f"❌ Error parsing API response: {e}")
             else:
