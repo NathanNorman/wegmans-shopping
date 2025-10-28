@@ -192,22 +192,45 @@ class WegmansScraper:
 
         # Intercept Algolia API requests (define once, reuse instance variable)
         async def handle_route(route, request):
-            """Intercept and capture API responses"""
+            """Intercept, MODIFY, and capture API responses"""
             logger.debug(f"🌐 Intercepted request: {request.url[:100]}...")
-            response = await route.fetch()
 
             # Check if this is an Algolia search API call
             if 'algolia' in request.url.lower() and 'queries' in request.url.lower():
                 logger.info(f"🎯 ALGOLIA API CALL INTERCEPTED: {request.url[:150]}")
 
-                # Log REQUEST body (what we're sending TO Algolia)
+                # MODIFY the request to inject Raleigh store (86)
                 try:
                     request_body = request.post_data
                     if request_body:
                         request_data = json.loads(request_body)
-                        logger.info(f"📤 REQUEST to Algolia: {json.dumps(request_data, indent=2)[:500]}")
-                except:
-                    pass
+
+                        # Inject store 86 into filters for each query
+                        for req in request_data.get('requests', []):
+                            old_filter = req.get('filters', '')
+
+                            # Replace storeNumber:0 or storeNumber:X with storeNumber:86
+                            if 'storeNumber:' in old_filter:
+                                import re
+                                new_filter = re.sub(r'storeNumber:\d+', 'storeNumber:86', old_filter)
+                                req['filters'] = new_filter
+                                logger.info(f"🔧 MODIFIED filter: {old_filter[:100]} → {new_filter[:100]}")
+                            elif old_filter:
+                                # Add store if not present
+                                req['filters'] = f"storeNumber:86 AND {old_filter}"
+                                logger.info(f"🔧 ADDED storeNumber:86 to filters")
+
+                        # Send MODIFIED request
+                        response = await route.fetch(
+                            method=request.method,
+                            headers=request.headers,
+                            post_data=json.dumps(request_data)
+                        )
+                    else:
+                        response = await route.fetch()
+                except Exception as e:
+                    logger.warning(f"⚠️  Could not modify request: {e}")
+                    response = await route.fetch()
 
                 # Log RESPONSE body (what Algolia sends back)
                 try:
@@ -230,6 +253,7 @@ class WegmansScraper:
                     logger.warning(f"❌ Error parsing API response: {e}")
             else:
                 logger.debug(f"  Skipping non-Algolia request")
+                response = await route.fetch()
 
             await route.fulfill(response=response)
 
