@@ -809,9 +809,20 @@ async function saveCurrentList() {
 
         if (data.success) {
             document.getElementById('saveListName').value = '';
+
+            // Update frequent items in database (before clearing cart)
+            try {
+                await fetch('/api/cart/complete', {
+                    method: 'POST'
+                });
+                console.log('✅ Updated frequent items in database');
+            } catch (e) {
+                console.warn('Failed to update frequent items:', e);
+            }
+
             showToast(`✓ Saved "${listName}" to database!`);
 
-            // Refresh frequently bought items
+            // Refresh frequently bought items display
             loadFrequentItems();
         } else {
             showToast('Failed to save list', true);
