@@ -1321,31 +1321,38 @@ async function printShoppingList() {
         // 2. Update frequent items (for future recommendations)
         await fetch('/api/cart/update-frequent', { method: 'POST' });
 
-        // 3. Generate and print
+        // 3. Generate print content
         const printContent = generatePrintableList();
 
-        // Use iframe approach for better control
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
+        // Save original body
+        const originalBody = document.body.innerHTML;
+        const originalTitle = document.title;
 
-        const iframeDoc = iframe.contentWindow.document;
-        iframeDoc.open();
-        iframeDoc.write(printContent);
-        iframeDoc.close();
+        // Replace body with print content
+        document.body.innerHTML = printContent;
+        document.title = `${getTodaysListName()} - Shopping List`;
 
-        // Wait for content to load, then print
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+        // Setup afterprint handler to restore page
+        const restorePage = () => {
+            document.body.innerHTML = originalBody;
+            document.title = originalTitle;
 
-        // Clean up iframe and show clear modal after a short delay
+            // Reinitialize after restoring
+            loadCart();
+            loadFrequentItems();
+
+            // Show clear cart modal
+            setTimeout(() => openModal('clearCartModal'), 300);
+
+            window.removeEventListener('afterprint', restorePage);
+        };
+
+        window.addEventListener('afterprint', restorePage, { once: true });
+
+        // Small delay to ensure DOM is ready, then print
         setTimeout(() => {
-            document.body.removeChild(iframe);
-            openModal('clearCartModal');
-        }, 1000);
+            window.print();
+        }, 200);
 
     } catch (error) {
         console.error('Print error:', error);
@@ -1371,20 +1378,20 @@ function getMobilePrintStyles() {
     return `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { margin: 0.2in; size: portrait; }
-        body { font-family: Arial, sans-serif; padding: 4px; font-size: 9px; }
-        h1 { color: #ce3f24; font-size: 13px; margin-bottom: 3px; padding-bottom: 2px; border-bottom: 1px solid #ce3f24; }
-        h2 { color: #333; font-size: 9px; font-weight: 600; margin: 3px 0 2px 0; padding: 2px 0 2px 4px; border-left: 2px solid #ce3f24; }
-        .meta { color: #666; font-size: 8px; margin-bottom: 4px; line-height: 1.2; }
-        table { width: 100%; border-collapse: collapse; margin-top: 2px; }
-        th { background: #f5f5f5; text-align: left; padding: 2px 3px; border-bottom: 1px solid #ddd; font-size: 8px; }
-        td { padding: 2px 3px; border-bottom: 1px solid #f0f0f0; font-size: 9px; line-height: 1.2; }
+        body { font-family: Arial, sans-serif; padding: 3px; font-size: 9px; line-height: 1.1; }
+        h1 { color: #ce3f24; font-size: 12px; margin-bottom: 1px; padding-bottom: 1px; border-bottom: 1px solid #ce3f24; }
+        h2 { color: #333; font-size: 8px; font-weight: 600; margin: 2px 0 1px 0; padding: 1px 0 1px 3px; border-left: 2px solid #ce3f24; }
+        .meta { color: #666; font-size: 7px; margin-bottom: 2px; line-height: 1.1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0; }
+        th { background: #f5f5f5; text-align: left; padding: 1px 2px; border-bottom: 1px solid #ddd; font-size: 7px; }
+        td { padding: 1px 2px; border-bottom: 1px solid #f0f0f0; font-size: 9px; line-height: 1.1; }
         tr { page-break-inside: avoid; }
-        .qty { text-align: center; font-weight: bold; width: 30px; font-size: 9px; }
-        .price { text-align: right; width: 50px; font-size: 9px; }
-        .checkbox { width: 10px; height: 10px; border: 1px solid #999; display: inline-block; margin-right: 4px; vertical-align: middle; }
-        .totals { margin-top: 6px; text-align: right; font-size: 9px; }
-        .totals div { padding: 1px 0; line-height: 1.3; }
-        .grand-total { font-weight: bold; font-size: 11px; color: #ce3f24; border-top: 1px solid #333; padding-top: 3px; margin-top: 3px; }
+        .qty { text-align: center; font-weight: bold; width: 28px; font-size: 8px; }
+        .price { text-align: right; width: 45px; font-size: 8px; }
+        .checkbox { width: 8px; height: 8px; border: 1px solid #999; display: inline-block; margin-right: 2px; vertical-align: middle; }
+        .totals { margin-top: 3px; text-align: right; font-size: 9px; }
+        .totals div { padding: 0; line-height: 1.2; }
+        .grand-total { font-weight: bold; font-size: 10px; color: #ce3f24; border-top: 1px solid #333; padding-top: 2px; margin-top: 2px; }
     `;
 }
 
@@ -1409,10 +1416,15 @@ function getDesktopPrintStyles() {
     `;
 }
 
+function isMobileDevice() {
+    const ua = navigator.userAgent.toLowerCase();
+    return /iphone|ipod|android/.test(ua) && !/ipad|tablet/.test(ua);
+}
+
 function generatePrintableList() {
     const listName = getTodaysListName();
     const date = new Date().toLocaleDateString();
-    const isMobile = window.innerWidth <= 767;
+    const isMobile = isMobileDevice();
 
     // Organize by aisle
     const byAisle = {};
@@ -1434,20 +1446,12 @@ function generatePrintableList() {
     // Generate mobile-specific or desktop styles
     const styles = isMobile ? getMobilePrintStyles() : getDesktopPrintStyles();
 
-    // Generate HTML for print
+    // Generate HTML for print (just body content + inline style tag)
     let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-            <title>${listName} - Wegmans Shopping List</title>
-            <style>
-                ${styles}
-            </style>
-        </head>
-        <body>
-            <h1>🛒 Wegmans Shopping List</h1>
+        <style>
+            ${styles}
+        </style>
+        <h1>${isMobile ? 'Wegmans Shopping List' : '🛒 Wegmans Shopping List'}</h1>
             <div class="meta">
                 <strong>${listName}</strong><br>
                 Printed: ${date}<br>
@@ -1486,14 +1490,6 @@ function generatePrintableList() {
             <div class="grand-total">Total: $${total.toFixed(2)}</div>
         </div>
 
-        <script>
-            window.onload = () => {
-                // Auto-close after printing
-                window.onafterprint = () => window.close();
-            };
-        </script>
-        </body>
-        </html>
     `;
 
     return html;
