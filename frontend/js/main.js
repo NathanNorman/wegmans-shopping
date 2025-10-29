@@ -1367,9 +1367,52 @@ async function confirmClearAfterPrint() {
     }
 }
 
+function getMobilePrintStyles() {
+    return `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { margin: 0.2in; size: portrait; }
+        body { font-family: Arial, sans-serif; padding: 4px; font-size: 9px; }
+        h1 { color: #ce3f24; font-size: 13px; margin-bottom: 3px; padding-bottom: 2px; border-bottom: 1px solid #ce3f24; }
+        h2 { color: #333; font-size: 9px; font-weight: 600; margin: 3px 0 2px 0; padding: 2px 0 2px 4px; border-left: 2px solid #ce3f24; }
+        .meta { color: #666; font-size: 8px; margin-bottom: 4px; line-height: 1.2; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+        th { background: #f5f5f5; text-align: left; padding: 2px 3px; border-bottom: 1px solid #ddd; font-size: 8px; }
+        td { padding: 2px 3px; border-bottom: 1px solid #f0f0f0; font-size: 9px; line-height: 1.2; }
+        tr { page-break-inside: avoid; }
+        .qty { text-align: center; font-weight: bold; width: 30px; font-size: 9px; }
+        .price { text-align: right; width: 50px; font-size: 9px; }
+        .checkbox { width: 10px; height: 10px; border: 1px solid #999; display: inline-block; margin-right: 4px; vertical-align: middle; }
+        .totals { margin-top: 6px; text-align: right; font-size: 9px; }
+        .totals div { padding: 1px 0; line-height: 1.3; }
+        .grand-total { font-weight: bold; font-size: 11px; color: #ce3f24; border-top: 1px solid #333; padding-top: 3px; margin-top: 3px; }
+    `;
+}
+
+function getDesktopPrintStyles() {
+    return `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { margin: 0.4in; }
+        body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
+        h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin-bottom: 8px; font-size: 20px; }
+        h2 { color: #333; margin: 12px 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 13px; }
+        .meta { color: #666; font-size: 10px; margin-bottom: 12px; line-height: 1.3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        th { background: #f5f5f5; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 10px; }
+        td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
+        tr { page-break-inside: avoid; }
+        .qty { text-align: center; font-weight: bold; width: 50px; }
+        .price { text-align: right; width: 70px; }
+        .checkbox { width: 14px; height: 14px; border: 2px solid #999; display: inline-block; margin-right: 6px; vertical-align: middle; }
+        .totals { margin-top: 12px; text-align: right; font-size: 12px; }
+        .totals div { padding: 2px 0; }
+        .grand-total { font-weight: bold; font-size: 14px; color: #ce3f24; border-top: 2px solid #333; padding-top: 6px; margin-top: 6px; }
+    `;
+}
+
 function generatePrintableList() {
     const listName = getTodaysListName();
     const date = new Date().toLocaleDateString();
+    const isMobile = window.innerWidth <= 767;
 
     // Organize by aisle
     const byAisle = {};
@@ -1388,60 +1431,19 @@ function generatePrintableList() {
     const tax = subtotal * NC_TAX_RATE;
     const total = subtotal + tax;
 
+    // Generate mobile-specific or desktop styles
+    const styles = isMobile ? getMobilePrintStyles() : getDesktopPrintStyles();
+
     // Generate HTML for print
     let html = `
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <title>${listName} - Wegmans Shopping List</title>
             <style>
-                @media print {
-                    @page {
-                        margin: 0.3in;
-                        size: auto;
-                    }
-                    body { font-family: Arial, sans-serif; font-size: 11px; }
-                    tr { page-break-inside: avoid; }
-                }
-
-                /* Mobile print - ultra compact for single page */
-                @media print and (max-width: 767px) {
-                    @page { margin: 0.2in; }
-                    body { padding: 2px; font-size: 8px; }
-                    h1 { font-size: 11px; margin: 0 0 2px 0; padding-bottom: 1px; border-bottom-width: 1px; }
-                    h2 {
-                        font-size: 8px;
-                        font-weight: 600;
-                        margin: 2px 0 1px 0;
-                        padding: 1px 0;
-                        border-bottom: none;
-                        border-left: 2px solid #ce3f24;
-                        padding-left: 4px;
-                    }
-                    .meta { font-size: 7px; margin-bottom: 2px; line-height: 1.1; }
-                    table { margin-top: 0; }
-                    th { padding: 1px 2px; font-size: 7px; background: #fafafa; }
-                    td { padding: 1px 2px; font-size: 8px; line-height: 1.1; }
-                    .checkbox { width: 8px; height: 8px; border-width: 1px; margin-right: 3px; }
-                    .qty { width: 28px; font-size: 8px; }
-                    .price { width: 45px; font-size: 8px; }
-                    .totals { margin-top: 3px; font-size: 8px; }
-                    .totals div { padding: 0; line-height: 1.3; }
-                    .grand-total { font-size: 10px; padding-top: 2px; margin-top: 2px; border-top-width: 1px; }
-                }
-                body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
-                h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin: 0 0 8px 0; font-size: 20px; }
-                h2 { color: #333; margin: 12px 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 13px; }
-                .meta { color: #666; font-size: 10px; margin-bottom: 12px; line-height: 1.3; }
-                table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-                th { background: #f5f5f5; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 10px; }
-                td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
-                .qty { text-align: center; font-weight: bold; width: 50px; }
-                .price { text-align: right; width: 70px; }
-                .totals { margin-top: 12px; text-align: right; font-size: 12px; }
-                .totals div { padding: 2px 0; }
-                .grand-total { font-weight: bold; font-size: 14px; color: #ce3f24; border-top: 2px solid #333; padding-top: 6px; margin-top: 6px; }
-                .checkbox { width: 14px; height: 14px; border: 2px solid #999; display: inline-block; margin-right: 6px; vertical-align: middle; }
+                ${styles}
             </style>
         </head>
         <body>
