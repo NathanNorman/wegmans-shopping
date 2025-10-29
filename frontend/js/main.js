@@ -1342,20 +1342,30 @@ async function printShoppingList() {
         await fetch('/api/cart/update-frequent', { method: 'POST' });
 
         // 3. Generate print content
-        const printContent = generatePrintableList();
+        const { html, styles } = generatePrintableList();
 
-        // Save original body
+        // Save original content
         const originalBody = document.body.innerHTML;
         const originalTitle = document.title;
 
-        // Replace body with print content
-        document.body.innerHTML = printContent;
+        // Inject print styles into head
+        const styleEl = document.createElement('style');
+        styleEl.id = 'print-styles-temp';
+        styleEl.textContent = styles;
+        document.head.appendChild(styleEl);
+
+        // Replace body with print HTML
+        document.body.innerHTML = html;
         document.title = `${getTodaysListName()} - Shopping List`;
 
         // Setup afterprint handler to restore page
         const restorePage = () => {
             document.body.innerHTML = originalBody;
             document.title = originalTitle;
+
+            // Remove print styles
+            const printStyleEl = document.getElementById('print-styles-temp');
+            if (printStyleEl) printStyleEl.remove();
 
             // Reinitialize after restoring
             loadCart();
@@ -1466,11 +1476,8 @@ function generatePrintableList() {
     // Generate mobile-specific or desktop styles
     const styles = isMobile ? getMobilePrintStyles() : getDesktopPrintStyles();
 
-    // Generate HTML for print (just body content + inline style tag)
+    // Generate HTML for print (body content only, no style tag)
     let html = `
-        <style>
-            ${styles}
-        </style>
         <h1>${isMobile ? 'Wegmans Shopping List' : '🛒 Wegmans Shopping List'}</h1>
             <div class="meta">
                 <strong>${listName}</strong><br>
@@ -1512,7 +1519,7 @@ function generatePrintableList() {
 
     `;
 
-    return html;
+    return { html, styles };
 }
 
 // ===== SAVE CUSTOM LIST =====
