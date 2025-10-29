@@ -1344,45 +1344,55 @@ async function printShoppingList() {
         // 3. Generate print content
         const { html, styles } = generatePrintableList();
 
-        // Save original content
-        const originalBody = document.body.innerHTML;
-        const originalTitle = document.title;
+        // Create or get print container
+        let printDiv = document.getElementById('printable-content');
+        if (!printDiv) {
+            printDiv = document.createElement('div');
+            printDiv.id = 'printable-content';
+            printDiv.className = 'print-only';
+            document.body.appendChild(printDiv);
+        }
 
-        // Inject print styles into head
-        const styleEl = document.createElement('style');
-        styleEl.id = 'print-styles-temp';
-        styleEl.textContent = styles;
-        document.head.appendChild(styleEl);
+        // Inject styles if not already present
+        if (!document.getElementById('print-styles-injected')) {
+            const styleEl = document.createElement('style');
+            styleEl.id = 'print-styles-injected';
+            styleEl.textContent = `
+                /* Hide everything except print content when printing */
+                @media print {
+                    body > *:not(.print-only) {
+                        display: none !important;
+                    }
+                    .print-only {
+                        display: block !important;
+                    }
+                }
+                /* Hide print content on screen */
+                @media screen {
+                    .print-only {
+                        display: none !important;
+                    }
+                }
+                /* Print-specific styles */
+                @media print {
+                    ${styles}
+                }
+            `;
+            document.head.appendChild(styleEl);
+        }
 
-        // Replace body with print HTML
-        document.body.innerHTML = html;
-        document.title = `${getTodaysListName()} - Shopping List`;
+        // Set print content
+        printDiv.innerHTML = html;
 
-        // Setup afterprint handler to restore page
-        const restorePage = () => {
-            document.body.innerHTML = originalBody;
-            document.title = originalTitle;
-
-            // Remove print styles
-            const printStyleEl = document.getElementById('print-styles-temp');
-            if (printStyleEl) printStyleEl.remove();
-
-            // Reinitialize after restoring
-            loadCart();
-            loadFrequentItems();
-
-            // Show clear cart modal
-            setTimeout(() => openModal('clearCartModal'), 300);
-
-            window.removeEventListener('afterprint', restorePage);
+        // Setup afterprint to show modal
+        const afterPrintHandler = () => {
+            openModal('clearCartModal');
+            window.removeEventListener('afterprint', afterPrintHandler);
         };
+        window.addEventListener('afterprint', afterPrintHandler, { once: true });
 
-        window.addEventListener('afterprint', restorePage, { once: true });
-
-        // Small delay to ensure DOM is ready, then print
-        setTimeout(() => {
-            window.print();
-        }, 200);
+        // Print immediately
+        window.print();
 
     } catch (error) {
         console.error('Print error:', error);
