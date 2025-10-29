@@ -8,6 +8,33 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+    <!-- Mobile Action Bar (hidden on desktop) -->
+    <div class="mobile-actions" style="display: none;">
+        <button class="btn-print" onclick="printShoppingList()" id="mobilePrintBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print
+        </button>
+        <button class="btn-view-list" onclick="openModal('saveListModal')" id="mobileSaveBtn" style="background: var(--success-green);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Save
+        </button>
+        <button class="past-lists-btn" onclick="showPastLists()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Lists
+        </button>
+    </div>
+
     <div class="header">
         <div class="header-inner">
             <div class="header-logo">

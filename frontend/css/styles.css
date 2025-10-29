@@ -1711,64 +1711,50 @@ input:focus-visible {
         padding: var(--space-1) 0;
     }
 
-    /* Move cart actions to floating bar above cart */
+    /* Hide cart action buttons on mobile - moved to top bar */
     .cart-actions {
-        position: fixed;
-        bottom: calc(70vh + 8px);
-        left: 0;
-        right: 0;
-        display: flex;
-        gap: var(--space-2);
-        z-index: 999;
-        background: transparent;
-        padding: var(--space-2) var(--space-3);
-        pointer-events: none;
+        display: none;
     }
 
-    .cart-actions button {
-        pointer-events: auto;
+    /* Show mobile action bar */
+    .mobile-actions {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: var(--primary-red);
+        padding: var(--space-2);
+        display: flex !important;
+        gap: var(--space-2);
+        z-index: 1001;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .mobile-actions button {
         flex: 1;
-        min-height: 44px;
-        margin-bottom: 0;
-        font-size: 13px;
+        min-height: 40px;
+        font-size: 11px;
         padding: var(--space-2);
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        gap: 3px;
+        background: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        color: var(--text-primary);
     }
 
-    .cart-actions button svg {
-        width: 16px;
-        height: 16px;
-        margin-right: 0;
+    .mobile-actions button svg {
+        width: 14px;
+        height: 14px;
     }
 
-    /* Compact button layout: Print + Lists on top row, Save + Clear on bottom */
-    .cart-actions {
-        flex-wrap: wrap;
-    }
-
-    .cart-actions .btn-print {
-        order: 1;
-        flex: 1 1 58%;
-    }
-
-    .cart-actions .past-lists-btn {
-        order: 2;
-        flex: 1 1 38%;
-    }
-
-    .cart-actions .btn-view-list {
-        order: 3;
-        flex: 1 1 48%;
-    }
-
-    .cart-actions .btn-clear {
-        order: 4;
-        flex: 1 1 48%;
-        display: none; /* Hide clear on mobile - rarely needed */
+    /* Push header down to make room for action bar */
+    .header {
+        margin-top: 56px;
+        padding: var(--space-3);
     }
 
     .auto-save-indicator {
