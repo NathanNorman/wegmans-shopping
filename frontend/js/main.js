@@ -1397,20 +1397,29 @@ function generatePrintableList() {
             <style>
                 @media print {
                     @page {
-                        margin: 0.4in;
+                        margin: 0.3in;
                         size: auto;
                     }
                     body { font-family: Arial, sans-serif; font-size: 11px; }
+                    tr { page-break-inside: avoid; }
                 }
-                @media screen and (max-width: 767px) {
-                    body { padding: 8px; font-size: 10px; }
-                    h1 { font-size: 16px; margin: 0 0 6px 0; padding-bottom: 3px; }
-                    h2 { font-size: 12px; margin: 8px 0 3px 0; }
-                    .meta { font-size: 9px; margin-bottom: 8px; }
-                    th { padding: 3px 4px; font-size: 9px; }
-                    td { padding: 2px 4px; font-size: 10px; }
-                    .totals { margin-top: 8px; font-size: 11px; }
-                    .grand-total { font-size: 13px; padding-top: 4px; margin-top: 4px; }
+
+                /* Mobile print - ultra compact for single page */
+                @media print and (max-width: 767px) {
+                    @page { margin: 0.2in; }
+                    body { padding: 2px; font-size: 8px; }
+                    h1 { font-size: 12px; margin: 0 0 2px 0; padding-bottom: 2px; border-bottom-width: 1px; }
+                    h2 { font-size: 9px; margin: 3px 0 1px 0; padding-bottom: 1px; }
+                    .meta { font-size: 7px; margin-bottom: 3px; line-height: 1.1; }
+                    table { margin-top: 1px; }
+                    th { padding: 1px 2px; font-size: 7px; background: #fafafa; }
+                    td { padding: 1px 2px; font-size: 8px; line-height: 1.1; }
+                    .checkbox { width: 8px; height: 8px; border-width: 1px; margin-right: 3px; }
+                    .qty { width: 28px; font-size: 8px; }
+                    .price { width: 45px; font-size: 8px; }
+                    .totals { margin-top: 3px; font-size: 8px; }
+                    .totals div { padding: 0; line-height: 1.3; }
+                    .grand-total { font-size: 10px; padding-top: 2px; margin-top: 2px; border-top-width: 1px; }
                 }
                 body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
                 h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin: 0 0 8px 0; font-size: 20px; }
