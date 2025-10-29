@@ -51,21 +51,22 @@ async def session_middleware(request: Request, call_next):
 
     # Get or create user session
     user_id = request.cookies.get("user_id")
+
     if not user_id:
         # Generate unique user ID for new visitors
         import uuid
         user_id = str(uuid.uuid4().int)[:12]  # 12-digit unique ID
         logger.info(f"🆕 New user session created: {user_id}")
 
-        # Create user in database
-        try:
-            with get_db() as cursor:
-                cursor.execute(
-                    "INSERT INTO users (id, username) VALUES (%s, %s) ON CONFLICT (id) DO NOTHING",
-                    (int(user_id), f"user_{user_id}")
-                )
-        except Exception as e:
-            logger.error(f"Failed to create user in database: {e}")
+    # Always ensure user exists in database (handles deleted users with old cookies)
+    try:
+        with get_db() as cursor:
+            cursor.execute(
+                "INSERT INTO users (id, username) VALUES (%s, %s) ON CONFLICT (id) DO NOTHING",
+                (int(user_id), f"user_{user_id}")
+            )
+    except Exception as e:
+        logger.error(f"Failed to create user in database: {e}")
 
     request.state.user_id = int(user_id)
     response = await call_next(request)
