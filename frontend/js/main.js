@@ -1418,18 +1418,22 @@ function getMobilePrintStyles() {
     return `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { margin: 0.2in; size: portrait; }
-        body { font-family: Arial, sans-serif; padding: 3px; font-size: 9px; line-height: 1.1; }
+        body { font-family: Arial, sans-serif; padding: 3px; font-size: 9px; line-height: 1.1; background: white; }
         h1 { color: #ce3f24; font-size: 12px; margin-bottom: 1px; padding-bottom: 1px; border-bottom: 1px solid #ce3f24; }
-        h2 { color: #333; font-size: 8px; font-weight: 600; margin: 2px 0 1px 0; padding: 1px 0 1px 3px; border-left: 2px solid #ce3f24; }
+        h2 { color: #333; font-size: 8px; font-weight: 600; margin: 2px 0 1px 0; padding: 1px 0 1px 3px; border-left: 2px solid #ce3f24; background: white; }
         .meta { color: #666; font-size: 7px; margin-bottom: 2px; line-height: 1.1; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0; }
-        th { background: #f5f5f5; text-align: left; padding: 1px 2px; border-bottom: 1px solid #ddd; font-size: 7px; }
-        td { padding: 1px 2px; border-bottom: 1px solid #f0f0f0; font-size: 9px; line-height: 1.1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0; table-layout: fixed; }
+        th { background: white; text-align: left; padding: 1px 2px; border-bottom: 1px solid #ddd; font-size: 7px; }
+        th:first-child { width: 20px; } /* Checkbox column */
+        th:nth-child(2) { width: 35px; } /* Qty column */
+        th:last-child { width: 55px; } /* Price column */
+        td { padding: 1px 2px; border-bottom: 1px solid #f0f0f0; font-size: 9px; line-height: 1.1; vertical-align: top; }
+        td:first-child { width: 20px; text-align: center; } /* Checkbox */
+        td:nth-child(2) { width: 35px; text-align: center; font-weight: bold; } /* Qty */
+        td:last-child { width: 55px; text-align: right; } /* Price */
         tr { page-break-inside: avoid; }
-        .qty { text-align: center; font-weight: bold; width: 28px; font-size: 8px; }
-        .price { text-align: right; width: 45px; font-size: 8px; }
-        .checkbox { width: 8px; height: 8px; border: 1px solid #999; display: inline-block; margin-right: 2px; vertical-align: middle; }
-        .totals { margin-top: 3px; text-align: right; font-size: 9px; }
+        .checkbox { width: 8px; height: 8px; border: 1px solid #999; display: inline-block; vertical-align: middle; }
+        .totals { margin-top: 3px; text-align: right; font-size: 9px; background: white; }
         .totals div { padding: 0; line-height: 1.2; }
         .grand-total { font-weight: bold; font-size: 10px; color: #ce3f24; border-top: 1px solid #333; padding-top: 2px; margin-top: 2px; }
     `;
@@ -1439,18 +1443,22 @@ function getDesktopPrintStyles() {
     return `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { margin: 0.4in; }
-        body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
+        body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; background: white; }
         h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin-bottom: 8px; font-size: 20px; }
-        h2 { color: #333; margin: 12px 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 13px; }
+        h2 { color: #333; margin: 12px 0 4px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; font-size: 13px; background: white; }
         .meta { color: #666; font-size: 10px; margin-bottom: 12px; line-height: 1.3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        th { background: #f5f5f5; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 10px; }
-        td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; table-layout: fixed; }
+        th { background: white; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 10px; }
+        th:first-child { width: 30px; } /* Checkbox column */
+        th:nth-child(2) { width: 50px; } /* Qty column */
+        th:last-child { width: 70px; } /* Price column */
+        td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 11px; vertical-align: top; }
+        td:first-child { width: 30px; text-align: center; } /* Checkbox */
+        td:nth-child(2) { width: 50px; text-align: center; font-weight: bold; } /* Qty */
+        td:last-child { width: 70px; text-align: right; } /* Price */
         tr { page-break-inside: avoid; }
-        .qty { text-align: center; font-weight: bold; width: 50px; }
-        .price { text-align: right; width: 70px; }
-        .checkbox { width: 14px; height: 14px; border: 2px solid #999; display: inline-block; margin-right: 6px; vertical-align: middle; }
-        .totals { margin-top: 12px; text-align: right; font-size: 12px; }
+        .checkbox { width: 14px; height: 14px; border: 2px solid #999; display: inline-block; vertical-align: middle; }
+        .totals { margin-top: 12px; text-align: right; font-size: 12px; background: white; }
         .totals div { padding: 2px 0; }
         .grand-total { font-weight: bold; font-size: 14px; color: #ce3f24; border-top: 2px solid #333; padding-top: 6px; margin-top: 6px; }
     `;
