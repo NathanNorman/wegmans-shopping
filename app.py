@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import logging
 
-from src.api import search, cart, lists, health
+from src.api import search, cart, lists, recipes, health
 from config.settings import settings
 
 # Logging
@@ -34,6 +34,7 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(cart.router, prefix="/api", tags=["cart"])
 app.include_router(lists.router, prefix="/api", tags=["lists"])
+app.include_router(recipes.router, prefix="/api", tags=["recipes"])
 
 # Serve static files (CSS/JS)
 app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
