@@ -161,7 +161,7 @@ async function fetchMissingImagesForFrequentItems(frequentItems) {
             const response = await fetch('/api/search', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ query: item.product.name, max_results: 1 })
+                body: JSON.stringify({ search_term: item.product.name, max_results: 1 })
             });
 
             const data = await response.json();
