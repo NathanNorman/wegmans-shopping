@@ -1044,24 +1044,33 @@ async function showPastLists() {
         if (lists.length === 0) {
             container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No saved lists yet</p><p class="text-xs">Complete a shopping list and save it to see it here!</p></div>';
         } else {
-            // Separate auto-saved (by date) from custom named
-            const autoSaved = lists.filter(l => l.is_auto_saved);
-            const customNamed = lists.filter(l => !l.is_auto_saved);
+            // Separate by custom tags (all auto-saved, some with custom_name)
+            const customTagged = lists.filter(l => l.is_auto_saved && l.custom_name);
+            const regularHistory = lists.filter(l => l.is_auto_saved && !l.custom_name);
+            const manualSaves = lists.filter(l => !l.is_auto_saved);
 
             let html = '';
 
-            // Show auto-saved lists (shopping trips by date)
-            if (autoSaved.length > 0) {
-                html += '<h3 style="margin: 0 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-100); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📅 Shopping History</h3>';
-                autoSaved.forEach(list => {
+            // Show custom tagged lists first
+            if (customTagged.length > 0) {
+                html += '<h3 style="margin: 0 0 var(--space-4) 0; padding: var(--space-3); background: var(--success-green); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📝 Custom Lists</h3>';
+                customTagged.forEach(list => {
                     html += renderListCard(list);
                 });
             }
 
-            // Show custom named lists
-            if (customNamed.length > 0) {
-                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--success-green); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📝 Custom Lists</h3>';
-                customNamed.forEach(list => {
+            // Show regular shopping history
+            if (regularHistory.length > 0) {
+                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-100); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📅 Shopping History</h3>';
+                regularHistory.forEach(list => {
+                    html += renderListCard(list);
+                });
+            }
+
+            // Show old manual saves if any exist
+            if (manualSaves.length > 0) {
+                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-300); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📦 Old Lists</h3>';
+                manualSaves.forEach(list => {
                     html += renderListCard(list);
                 });
             }
@@ -1079,11 +1088,15 @@ function renderListCard(list) {
     const date = new Date(list.created_at);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+    // Display custom_name prominently if set, otherwise show date
+    const displayName = list.custom_name || list.name;
+    const subtitle = list.custom_name ? list.name : dateStr;
+
     let html = `
         <div class="saved-list-item">
             <div class="saved-list-header">
-                <div class="saved-list-name">${escapeHtml(list.name)}</div>
-                <div class="saved-list-date">${dateStr}</div>
+                <div class="saved-list-name">${escapeHtml(displayName)}</div>
+                <div class="saved-list-date">${escapeHtml(subtitle)}</div>
             </div>
             <div class="saved-list-meta">
                 ${list.items.length} unique items • ${list.total_quantity} total • $${list.total_price.toFixed(2)}
@@ -1555,8 +1568,8 @@ async function saveCustomListNow() {
     }
 
     try {
-        // Save to database via API (NOT as auto-saved)
-        const response = await fetch('/api/lists/save', {
+        // Tag today's list with custom name
+        const response = await fetch('/api/lists/tag', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name: listName })
@@ -1567,14 +1580,15 @@ async function saveCustomListNow() {
         if (data.success) {
             document.getElementById('customListName').value = '';
             closeModal('saveListModal');
-            showToast(`✓ Saved "${listName}"!`);
+            showToast(`✓ Tagged as "${listName}"!`);
 
-            // Update frequent items
-            await fetch('/api/cart/update-frequent', { method: 'POST' });
-            loadFrequentItems();
+            // Update the auto-save indicator to show custom name
+            updateTodaysListIndicator();
+        } else {
+            showToast(data.message || 'Failed to save', true);
         }
     } catch (error) {
-        showToast('Failed to save list', true);
-        console.error('Save error:', error);
+        showToast('Failed to tag list', true);
+        console.error('Tag error:', error);
     }
 }

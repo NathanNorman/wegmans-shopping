@@ -154,7 +154,7 @@ async def get_todays_list(request: Request):
 
     with get_db() as cursor:
         cursor.execute("""
-            SELECT l.id, l.name, l.created_at,
+            SELECT l.id, l.name, l.created_at, l.custom_name,
                    COUNT(li.id) as item_count,
                    COALESCE(SUM(li.quantity), 0) as total_quantity,
                    COALESCE(SUM(li.price * li.quantity), 0) as total_price
@@ -163,7 +163,7 @@ async def get_todays_list(request: Request):
             WHERE l.user_id = %s
             AND l.is_auto_saved = TRUE
             AND DATE(l.created_at) = CURRENT_DATE
-            GROUP BY l.id, l.name, l.created_at
+            GROUP BY l.id, l.name, l.created_at, l.custom_name
         """, (user_id,))
 
         today = cursor.fetchone()
@@ -172,3 +172,50 @@ async def get_todays_list(request: Request):
             return {"exists": True, "list": dict(today)}
         else:
             return {"exists": False}
+
+@router.post("/lists/tag")
+async def tag_todays_list(save_req: SaveListRequest, request: Request):
+    """
+    Tag today's auto-saved list with a custom name
+
+    Instead of creating duplicate list, adds custom_name tag to today's list.
+    """
+    user_id = request.state.user_id
+    custom_name = save_req.name
+
+    # Check cart isn't empty
+    cart = get_user_cart(user_id)
+    if not cart:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    with get_db() as cursor:
+        # Find today's auto-saved list
+        cursor.execute("""
+            SELECT id, custom_name FROM saved_lists
+            WHERE user_id = %s
+            AND is_auto_saved = TRUE
+            AND DATE(created_at) = CURRENT_DATE
+        """, (user_id,))
+
+        existing = cursor.fetchone()
+
+        if existing:
+            # Tag the existing list
+            cursor.execute("""
+                UPDATE saved_lists
+                SET custom_name = %s, last_updated = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (custom_name, existing['id']))
+
+            return {
+                "success": True,
+                "list_id": existing['id'],
+                "message": f"Tagged today's list as '{custom_name}'",
+                "replaced_tag": existing['custom_name']
+            }
+        else:
+            # No list today - need to auto-save first
+            raise HTTPException(
+                status_code=400,
+                detail="No list exists for today. Add items to cart first."
+            )
