@@ -245,3 +245,178 @@ def get_frequent_items(limit: int = 20) -> List[Dict]:
             LIMIT %s
         """, (limit,))
         return cursor.fetchall()
+
+# === Recipe Operations ===
+
+def get_user_recipes(user_id: int) -> List[Dict]:
+    """Get all recipes for user with their items"""
+    with get_db() as cursor:
+        # Get all recipes
+        cursor.execute("""
+            SELECT r.id, r.name, r.description, r.created_at, r.last_updated,
+                   COUNT(ri.id) as item_count,
+                   COALESCE(SUM(ri.quantity), 0) as total_quantity,
+                   COALESCE(SUM(ri.price * ri.quantity), 0) as total_price
+            FROM recipes r
+            LEFT JOIN recipe_items ri ON r.id = ri.recipe_id
+            WHERE r.user_id = %s
+            GROUP BY r.id, r.name, r.description, r.created_at, r.last_updated
+            ORDER BY r.last_updated DESC
+        """, (user_id,))
+        recipes = cursor.fetchall()
+
+        # For each recipe, fetch its items
+        for recipe in recipes:
+            cursor.execute("""
+                SELECT product_name, price, quantity, aisle, image_url,
+                       search_term, is_sold_by_weight, unit_price
+                FROM recipe_items
+                WHERE recipe_id = %s
+                ORDER BY id
+            """, (recipe['id'],))
+            recipe['items'] = cursor.fetchall()
+
+        return recipes
+
+def create_recipe(user_id: int, name: str, description: str = None) -> int:
+    """Create a new recipe"""
+    with get_db() as cursor:
+        cursor.execute("""
+            INSERT INTO recipes (user_id, name, description)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (user_id, name, description))
+        return cursor.fetchone()['id']
+
+def save_cart_as_recipe(user_id: int, name: str, description: str = None) -> int:
+    """Save current cart as a recipe"""
+    with get_db() as cursor:
+        # Create recipe
+        cursor.execute("""
+            INSERT INTO recipes (user_id, name, description)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (user_id, name, description))
+        recipe_id = cursor.fetchone()['id']
+
+        # Copy cart items to recipe
+        cursor.execute("""
+            INSERT INTO recipe_items
+            (recipe_id, product_name, price, quantity, aisle, image_url,
+             search_term, is_sold_by_weight, unit_price)
+            SELECT %s, product_name, price, quantity, aisle, image_url,
+                   search_term, is_sold_by_weight, unit_price
+            FROM shopping_carts
+            WHERE user_id = %s
+        """, (recipe_id, user_id))
+
+        return recipe_id
+
+def add_item_to_recipe(recipe_id: int, item: dict):
+    """Add an item to a recipe"""
+    with get_db() as cursor:
+        price_str = item['price'].replace('$', '') if isinstance(item['price'], str) else str(item['price'])
+
+        cursor.execute("""
+            INSERT INTO recipe_items
+            (recipe_id, product_name, price, quantity, aisle, image_url,
+             search_term, is_sold_by_weight, unit_price)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            recipe_id,
+            item['name'],
+            float(price_str),
+            item.get('quantity', 1),
+            item.get('aisle'),
+            item.get('image'),
+            item.get('search_term', ''),
+            item.get('is_sold_by_weight', False),
+            item.get('unit_price')
+        ))
+
+def update_recipe_item_quantity(recipe_item_id: int, quantity: float):
+    """Update item quantity in recipe"""
+    with get_db() as cursor:
+        cursor.execute("""
+            UPDATE recipe_items
+            SET quantity = %s
+            WHERE id = %s
+        """, (quantity, recipe_item_id))
+
+def remove_item_from_recipe(recipe_item_id: int):
+    """Remove item from recipe"""
+    with get_db() as cursor:
+        cursor.execute("""
+            DELETE FROM recipe_items
+            WHERE id = %s
+        """, (recipe_item_id,))
+
+def update_recipe(recipe_id: int, name: str = None, description: str = None):
+    """Update recipe metadata"""
+    with get_db() as cursor:
+        if name:
+            cursor.execute("""
+                UPDATE recipes
+                SET name = %s, last_updated = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (name, recipe_id))
+        if description is not None:  # Allow empty string
+            cursor.execute("""
+                UPDATE recipes
+                SET description = %s, last_updated = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (description, recipe_id))
+
+def delete_recipe(user_id: int, recipe_id: int):
+    """Delete a recipe (cascade deletes items)"""
+    with get_db() as cursor:
+        cursor.execute("""
+            DELETE FROM recipes
+            WHERE id = %s AND user_id = %s
+        """, (recipe_id, user_id))
+
+def load_recipe_to_cart(user_id: int, recipe_id: int, item_ids: List[int] = None):
+    """
+    Load recipe items into cart
+
+    Args:
+        user_id: User ID
+        recipe_id: Recipe ID
+        item_ids: Optional list of specific recipe_item IDs to add (for selective adding)
+    """
+    with get_db() as cursor:
+        # Verify recipe belongs to user
+        cursor.execute("""
+            SELECT id FROM recipes WHERE id = %s AND user_id = %s
+        """, (recipe_id, user_id))
+
+        if not cursor.fetchone():
+            raise ValueError("Recipe not found")
+
+        # Build query based on whether specific items are selected
+        if item_ids:
+            placeholders = ','.join(['%s'] * len(item_ids))
+            cursor.execute(f"""
+                INSERT INTO shopping_carts
+                (user_id, product_name, price, quantity, aisle, image_url,
+                 search_term, is_sold_by_weight, unit_price)
+                SELECT %s, product_name, price, quantity, aisle, image_url,
+                       search_term, is_sold_by_weight, unit_price
+                FROM recipe_items
+                WHERE recipe_id = %s AND id IN ({placeholders})
+                ON CONFLICT (user_id, product_name) DO UPDATE SET
+                    quantity = shopping_carts.quantity + EXCLUDED.quantity
+            """, (user_id, recipe_id, *item_ids))
+        else:
+            # Add all items
+            cursor.execute("""
+                INSERT INTO shopping_carts
+                (user_id, product_name, price, quantity, aisle, image_url,
+                 search_term, is_sold_by_weight, unit_price)
+                SELECT %s, product_name, price, quantity, aisle, image_url,
+                       search_term, is_sold_by_weight, unit_price
+                FROM recipe_items
+                WHERE recipe_id = %s
+                ON CONFLICT (user_id, product_name) DO UPDATE SET
+                    quantity = shopping_carts.quantity + EXCLUDED.quantity
+            """, (user_id, recipe_id))

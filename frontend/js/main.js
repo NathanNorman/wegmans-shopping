@@ -1592,3 +1592,299 @@ async function saveCustomListNow() {
         console.error('Tag error:', error);
     }
 }
+
+// ===== RECIPE MANAGEMENT =====
+
+let currentRecipeItems = []; // For interactive add flow
+let currentRecipeItemIndex = 0;
+
+async function showRecipes() {
+    const container = document.getElementById('recipesContainer');
+
+    try {
+        // Fetch recipes from database API
+        const response = await fetch('/api/recipes');
+        const data = await response.json();
+        const recipes = data.recipes || [];
+
+        if (recipes.length === 0) {
+            container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No recipes yet</p><p class="text-xs">Save your cart as a recipe or create a new one!</p></div>';
+        } else {
+            let html = '';
+            recipes.forEach(recipe => {
+                html += renderRecipeCard(recipe);
+            });
+            container.innerHTML = html;
+        }
+
+        openModal('recipesModal');
+    } catch (error) {
+        console.error('Error loading recipes:', error);
+    }
+}
+
+function renderRecipeCard(recipe) {
+    const date = new Date(recipe.created_at);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    let html = `
+        <div class="saved-list-item">
+            <div class="saved-list-header">
+                <div class="saved-list-name">${escapeHtml(recipe.name)}</div>
+                <div class="saved-list-date">${recipe.description ? escapeHtml(recipe.description) : dateStr}</div>
+            </div>
+            <div class="saved-list-meta">
+                ${recipe.items.length} items • ${recipe.total_quantity} total • $${recipe.total_price.toFixed(2)}
+            </div>
+
+            <div class="saved-list-items-preview">
+    `;
+
+    // Show individual items
+    recipe.items.forEach((item, index) => {
+        const itemData = {
+            name: item.product_name,
+            price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+            aisle: item.aisle,
+            image: item.image_url,
+            search_term: item.search_term || 'recipe',
+            is_sold_by_weight: item.is_sold_by_weight || false,
+            unit_price: item.unit_price || null
+        };
+
+        const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+        html += `
+            <div class="saved-list-item-row">
+                <div class="saved-list-item-info">
+                    <span class="saved-list-item-qty">${item.quantity}×</span>
+                    <span class="saved-list-item-name">${escapeHtml(item.product_name)}</span>
+                    <span style="color: var(--text-secondary);">${escapeHtml(displayPrice)}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+
+            <div class="saved-list-actions">
+                <button class="btn-load-all" onclick="addAllRecipeItems(${recipe.id})" style="background: var(--primary-red); color: var(--white);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add All
+                </button>
+                <button class="btn-load-all" onclick="startInteractiveAdd(${recipe.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Interactive Add
+                </button>
+                <button class="btn-delete-list" onclick="deleteRecipe(${recipe.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+async function saveCartAsRecipe() {
+    if (cart.length === 0) {
+        showToast('Cart is empty!', true);
+        return;
+    }
+
+    openModal('saveRecipeModal');
+}
+
+async function confirmSaveRecipe() {
+    const name = document.getElementById('recipeNameInput').value.trim();
+    const description = document.getElementById('recipeDescriptionInput').value.trim();
+
+    if (!name) {
+        showToast('Please enter a recipe name', true);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/recipes/save-cart', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, description: description || null })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('recipeNameInput').value = '';
+            document.getElementById('recipeDescriptionInput').value = '';
+            closeModal('saveRecipeModal');
+            showToast(`✓ Recipe "${name}" saved!`);
+        } else {
+            showToast('Failed to save recipe', true);
+        }
+    } catch (error) {
+        console.error('Save recipe error:', error);
+        showToast('Failed to save recipe', true);
+    }
+}
+
+async function addAllRecipeItems(recipeId) {
+    try {
+        const response = await fetch(`/api/recipes/${recipeId}/add-to-cart`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ item_ids: null }) // null = add all
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            cart = data.cart;
+            renderCart();
+            scheduleAutoSave();
+            closeModal('recipesModal');
+            showToast(`✓ All items added to cart!`);
+        } else {
+            showToast('Failed to add items', true);
+        }
+    } catch (error) {
+        console.error('Add all recipe items error:', error);
+        showToast('Failed to add items', true);
+    }
+}
+
+async function startInteractiveAdd(recipeId) {
+    try {
+        // Fetch recipe details
+        const response = await fetch('/api/recipes');
+        const data = await response.json();
+        const recipe = data.recipes.find(r => r.id === recipeId);
+
+        if (!recipe || recipe.items.length === 0) {
+            showToast('Recipe has no items', true);
+            return;
+        }
+
+        // Store recipe items and start flow
+        currentRecipeItems = recipe.items.map(item => ({
+            ...item,
+            recipe_id: recipeId
+        }));
+        currentRecipeItemIndex = 0;
+
+        closeModal('recipesModal');
+        showNextRecipeItem();
+    } catch (error) {
+        console.error('Start interactive add error:', error);
+        showToast('Failed to start interactive add', true);
+    }
+}
+
+function showNextRecipeItem() {
+    if (currentRecipeItemIndex >= currentRecipeItems.length) {
+        // Done with all items
+        showToast(`✓ Finished adding items!`);
+        currentRecipeItems = [];
+        currentRecipeItemIndex = 0;
+        return;
+    }
+
+    const item = currentRecipeItems[currentRecipeItemIndex];
+    const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+    // Update modal
+    document.getElementById('interactiveItemName').textContent = item.product_name;
+    document.getElementById('interactiveItemPrice').textContent = displayPrice;
+    document.getElementById('interactiveItemQuantity').textContent = `Default: ${item.quantity}×`;
+    document.getElementById('interactiveProgress').textContent = `Item ${currentRecipeItemIndex + 1} of ${currentRecipeItems.length}`;
+
+    openModal('interactiveAddModal');
+}
+
+async function skipRecipeItem() {
+    currentRecipeItemIndex++;
+    closeModal('interactiveAddModal');
+    showNextRecipeItem();
+}
+
+async function addRecipeItemToCart() {
+    const item = currentRecipeItems[currentRecipeItemIndex];
+
+    try {
+        const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: item.product_name,
+                price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                quantity: item.quantity,
+                aisle: item.aisle,
+                image: item.image_url,
+                search_term: item.search_term || 'recipe',
+                is_sold_by_weight: item.is_sold_by_weight || false,
+                unit_price: item.unit_price || null
+            })
+        });
+
+        const data = await response.json();
+        cart = data.cart;
+        renderCart();
+        scheduleAutoSave();
+
+        showToast(`✓ Added ${item.product_name}`);
+
+        currentRecipeItemIndex++;
+        closeModal('interactiveAddModal');
+        showNextRecipeItem();
+    } catch (error) {
+        console.error('Add recipe item error:', error);
+        showToast('Failed to add item', true);
+    }
+}
+
+async function deleteRecipe(recipeId) {
+    // Show confirmation modal
+    window.recipeToDelete = recipeId;
+    document.getElementById('deleteRecipeMessage').textContent = 'Are you sure you want to delete this recipe?';
+    openModal('deleteRecipeModal');
+}
+
+async function confirmDeleteRecipe() {
+    closeModal('deleteRecipeModal');
+    const recipeId = window.recipeToDelete;
+
+    if (!recipeId) return;
+
+    try {
+        const response = await fetch(`/api/recipes/${recipeId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showRecipes(); // Refresh display
+            showToast('✓ Recipe deleted');
+        } else {
+            showToast('Failed to delete recipe', true);
+        }
+    } catch (error) {
+        console.error('Delete recipe error:', error);
+        showToast('Failed to delete recipe', true);
+    }
+}
+
+function closeRecipes() {
+    closeModal('recipesModal');
+}
