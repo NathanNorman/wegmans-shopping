@@ -1408,10 +1408,18 @@ function generatePrintableList() {
                 @media print and (max-width: 767px) {
                     @page { margin: 0.2in; }
                     body { padding: 2px; font-size: 8px; }
-                    h1 { font-size: 12px; margin: 0 0 2px 0; padding-bottom: 2px; border-bottom-width: 1px; }
-                    h2 { font-size: 9px; margin: 3px 0 1px 0; padding-bottom: 1px; }
-                    .meta { font-size: 7px; margin-bottom: 3px; line-height: 1.1; }
-                    table { margin-top: 1px; }
+                    h1 { font-size: 11px; margin: 0 0 2px 0; padding-bottom: 1px; border-bottom-width: 1px; }
+                    h2 {
+                        font-size: 8px;
+                        font-weight: 600;
+                        margin: 2px 0 1px 0;
+                        padding: 1px 0;
+                        border-bottom: none;
+                        border-left: 2px solid #ce3f24;
+                        padding-left: 4px;
+                    }
+                    .meta { font-size: 7px; margin-bottom: 2px; line-height: 1.1; }
+                    table { margin-top: 0; }
                     th { padding: 1px 2px; font-size: 7px; background: #fafafa; }
                     td { padding: 1px 2px; font-size: 8px; line-height: 1.1; }
                     .checkbox { width: 8px; height: 8px; border-width: 1px; margin-right: 3px; }
