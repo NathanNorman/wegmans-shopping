@@ -48,7 +48,7 @@ async def load_list(list_id: int, request: Request):
 
 @router.delete("/lists/{list_id}")
 async def delete_list(list_id: int, request: Request):
-    """Delete a saved list"""
+    """Delete a saved list and update frequent items counts"""
     user_id = request.state.user_id
 
     with get_db() as cursor:
@@ -60,8 +60,30 @@ async def delete_list(list_id: int, request: Request):
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
+        # Get items in this list before deleting
+        cursor.execute("""
+            SELECT DISTINCT product_name
+            FROM saved_list_items
+            WHERE list_id = %s
+        """, (list_id,))
+        products_in_list = [row['product_name'] for row in cursor.fetchall()]
+
         # Delete list (cascade deletes items)
         cursor.execute("DELETE FROM saved_lists WHERE id = %s", (list_id,))
+
+        # Decrement frequent items counts (or delete if count reaches 0)
+        for product_name in products_in_list:
+            cursor.execute("""
+                UPDATE frequent_items
+                SET purchase_count = purchase_count - 1
+                WHERE product_name = %s
+            """, (product_name,))
+
+            # Delete if count is now 0 or less
+            cursor.execute("""
+                DELETE FROM frequent_items
+                WHERE product_name = %s AND purchase_count <= 0
+            """, (product_name,))
 
     return {"success": True}
 
