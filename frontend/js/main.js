@@ -1396,8 +1396,21 @@ function generatePrintableList() {
             <title>${listName} - Wegmans Shopping List</title>
             <style>
                 @media print {
-                    @page { margin: 0.4in; }
+                    @page {
+                        margin: 0.4in;
+                        size: auto;
+                    }
                     body { font-family: Arial, sans-serif; font-size: 11px; }
+                }
+                @media screen and (max-width: 767px) {
+                    body { padding: 8px; font-size: 10px; }
+                    h1 { font-size: 16px; margin: 0 0 6px 0; padding-bottom: 3px; }
+                    h2 { font-size: 12px; margin: 8px 0 3px 0; }
+                    .meta { font-size: 9px; margin-bottom: 8px; }
+                    th { padding: 3px 4px; font-size: 9px; }
+                    td { padding: 2px 4px; font-size: 10px; }
+                    .totals { margin-top: 8px; font-size: 11px; }
+                    .grand-total { font-size: 13px; padding-top: 4px; margin-top: 4px; }
                 }
                 body { font-family: Arial, sans-serif; max-width: 8in; margin: 0 auto; padding: 12px; font-size: 11px; }
                 h1 { color: #ce3f24; border-bottom: 2px solid #ce3f24; padding-bottom: 4px; margin: 0 0 8px 0; font-size: 20px; }
