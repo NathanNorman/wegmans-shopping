@@ -300,6 +300,11 @@ async function confirmAddQuantity() {
             })
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+
         const data = await response.json();
 
         // Update cart from server response
@@ -321,6 +326,15 @@ async function confirmAddQuantity() {
     } catch (error) {
         showToast('Failed to add to cart', true);
         console.error('Add to cart error:', error);
+
+        // Show detailed error on mobile for debugging
+        if (window.innerWidth <= 767) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:10px;right:10px;background:red;color:white;padding:20px;z-index:9999;font-size:12px;border-radius:8px;';
+            errorDiv.innerHTML = `<strong>Error:</strong><br>${error.message}<br><br>Check response status`;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
     }
 
     // Close modal
