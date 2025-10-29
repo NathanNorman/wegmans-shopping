@@ -301,8 +301,14 @@ async function confirmAddQuantity() {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Server error ${response.status}: ${errorText.substring(0, 100)}`);
+            let errorText = await response.text();
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorText = errorJson.detail || errorText;
+            } catch (e) {
+                // Not JSON, use as is
+            }
+            throw new Error(`Server error ${response.status}: ${errorText.substring(0, 200)}`);
         }
 
         const data = await response.json();
