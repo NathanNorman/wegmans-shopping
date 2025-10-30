@@ -159,16 +159,45 @@ function updateUIForAuthState(isAuthenticated) {
  */
 async function signUp(email, password) {
     try {
-        if (!supabase) {
-            throw new Error('Supabase not initialized');
-        }
+        // Get anonymous ID if exists (for cart migration)
+        const anonymousUserId = localStorage.getItem('anonymous_user_id');
 
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password
+        // Call OUR backend signup endpoint (not Supabase directly)
+        // This handles both Supabase auth AND data migration
+        const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: email,
+                password: password,
+                anonymous_user_id: anonymousUserId
+            })
         });
 
-        if (error) throw error;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Signup failed');
+        }
+
+        const data = await response.json();
+
+        // If signup successful, update local auth state
+        if (data.access_token) {
+            // Store session in Supabase client
+            if (supabase) {
+                await supabase.auth.setSession({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token
+                });
+            }
+
+            // Clear anonymous ID (data has been migrated)
+            localStorage.removeItem('anonymous_user_id');
+
+            currentUser = { id: data.user_id, email: data.email };
+            accessToken = data.access_token;
+            updateUIForAuthState(true);
+        }
 
         alert('Sign up successful! Check your email to confirm your account.');
         console.log('✓ User signed up:', email);
