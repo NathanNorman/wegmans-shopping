@@ -118,10 +118,9 @@ async function initAuth() {
             accessToken = session.access_token;
             updateUIForAuthState(true);
 
-            // If user just signed up/in, migrate anonymous data
-            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                migrateAnonymousData();
-            }
+            // Migration happens during signup on backend (via anonymous_user_id field)
+            // No need to migrate on signin - that would be wrong!
+            // User might be logging in from a different device with different anonymous cart
         } else {
             currentUser = null;
             accessToken = null;
@@ -274,35 +273,9 @@ async function updatePassword(newPassword) {
     }
 }
 
-/**
- * Migrate anonymous user data to authenticated account
- */
-async function migrateAnonymousData() {
-    const anonymousUserId = localStorage.getItem('anonymous_user_id');
-
-    if (!anonymousUserId) {
-        console.log('No anonymous data to migrate');
-        return;
-    }
-
-    try {
-        // Call backend migration endpoint
-        await fetchWithAuth('/api/auth/signup', {
-            method: 'POST',
-            body: JSON.stringify({
-                anonymous_user_id: anonymousUserId
-            })
-        });
-
-        // Clear anonymous ID
-        localStorage.removeItem('anonymous_user_id');
-
-        console.log('✓ Anonymous data migrated successfully');
-    } catch (error) {
-        console.error('Migration failed:', error);
-        // Don't block user if migration fails
-    }
-}
+// REMOVED: migrateAnonymousData()
+// Migration now happens automatically during signup via backend
+// The signup endpoint accepts anonymous_user_id and migrates data server-side
 
 /**
  * Helper: Fetch with authentication token
