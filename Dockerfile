@@ -1,14 +1,11 @@
-# Use official Playwright Python image (includes Chromium)
-FROM mcr.microsoft.com/playwright/python:v1.49.0-jammy
+# Use official Python slim image (no Playwright needed!)
+FROM python:3.10-slim
 
 WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright browsers (already in image, but ensure)
-RUN playwright install chromium
 
 # Copy application code
 COPY . .
