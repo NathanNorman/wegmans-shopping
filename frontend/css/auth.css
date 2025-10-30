@@ -1,0 +1,287 @@
+/**
+ * Authentication UI Styles
+ *
+ * Styles for login/register modals and auth buttons
+ */
+
+/* ========================================
+   Modal Base Styles
+   ======================================== */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s ease-out;
+    position: relative;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ========================================
+   Modal Content
+   ======================================== */
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 24px;
+    color: #333;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 15px;
+    transition: border-color 0.2s;
+}
+
+.modal-content input:focus {
+    outline: none;
+    border-color: #ff6200;
+    box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.1);
+}
+
+.modal-content input::placeholder {
+    color: #999;
+}
+
+.modal-content button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    background-color: #ff6200;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+    background-color: #e55800;
+}
+
+.modal-content button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.modal-content p {
+    text-align: center;
+    margin-top: 16px;
+    color: #666;
+    font-size: 14px;
+}
+
+.modal-content a {
+    color: #ff6200;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.modal-content a:hover {
+    text-decoration: underline;
+}
+
+/* ========================================
+   Close Button
+   ======================================== */
+
+.close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.close:hover,
+.close:focus {
+    color: #333;
+}
+
+/* ========================================
+   Auth Buttons in Header
+   ======================================== */
+
+#auth-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+#auth-buttons button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+#auth-buttons .btn-primary {
+    background-color: #ff6200;
+    color: white;
+}
+
+#auth-buttons .btn-primary:hover {
+    background-color: #e55800;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 98, 0, 0.2);
+}
+
+#auth-buttons .btn-secondary {
+    background-color: transparent;
+    color: #ff6200;
+    border: 2px solid #ff6200;
+}
+
+#auth-buttons .btn-secondary:hover {
+    background-color: #ff6200;
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* ========================================
+   User Menu
+   ======================================== */
+
+#user-menu {
+    display: none;
+    align-items: center;
+    gap: 16px;
+}
+
+#user-email {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+#user-menu button {
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #ff6200;
+    border: 2px solid #ff6200;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#user-menu button:hover {
+    background-color: #ff6200;
+    color: white;
+}
+
+/* ========================================
+   Form Validation States
+   ======================================== */
+
+.modal-content input:invalid {
+    border-color: #e74c3c;
+}
+
+.modal-content input:valid {
+    border-color: #27ae60;
+}
+
+/* ========================================
+   Mobile Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 20% auto;
+        padding: 24px;
+    }
+
+    .modal-content h2 {
+        font-size: 20px;
+    }
+
+    #auth-buttons {
+        gap: 8px;
+    }
+
+    #auth-buttons button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    #user-email {
+        display: none; /* Hide email on mobile, just show sign out */
+    }
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+.modal:focus-within {
+    outline: none;
+}
+
+.modal-content:focus {
+    outline: 2px solid #ff6200;
+    outline-offset: 4px;
+}
+
+/* Screen reader only text */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}

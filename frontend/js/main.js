@@ -26,7 +26,7 @@ async function autoSaveCart() {
     const listName = getTodaysListName();
 
     try {
-        const response = await fetch('/api/lists/auto-save', {
+        const response = await auth.fetchWithAuth('/api/lists/auto-save', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name: listName })
@@ -60,7 +60,7 @@ async function updateTodaysListIndicator() {
     if (!indicator || !text) return; // Elements not yet loaded
 
     try {
-        const response = await fetch('/api/lists/today');
+        const response = await auth.fetchWithAuth('/api/lists/today');
         const data = await response.json();
 
         if (data.exists) {
@@ -79,7 +79,7 @@ async function updateTodaysListIndicator() {
 console.log('💾 Loading saved cart...');
 async function loadCart() {
     try {
-        const response = await fetch('/api/cart');
+        const response = await auth.fetchWithAuth('/api/cart');
         const data = await response.json();
         if (data.cart && data.cart.length > 0) {
             cart = data.cart;
@@ -95,17 +95,24 @@ async function loadCart() {
     // Update today's list indicator after cart loads
     updateTodaysListIndicator();
 }
-loadCart();
+// IMPORTANT: Wait for auth to initialize before loading cart
+// These will be called from auth.js after initialization
+// loadCart();
+// loadFrequentItems();
 
-// Load and display frequently bought items
-loadFrequentItems();
+// Export for auth.js to call after initialization
+window.appReady = function() {
+    console.log('🎬 App ready - Auth initialized, loading cart...');
+    loadCart();
+    loadFrequentItems();
+};
 
 // Frequently bought items functions
 async function loadFrequentItems() {
     console.log('⭐ Loading frequently bought items from database...');
 
     try {
-        const response = await fetch('/api/frequent');
+        const response = await auth.fetchWithAuth('/api/frequent');
         const data = await response.json();
         const items = data.items || [];
 
@@ -158,7 +165,7 @@ async function fetchMissingImagesForFrequentItems(frequentItems) {
     for (const item of itemsNeedingImages) {
         try {
             // Search for the product to get fresh data with image
-            const response = await fetch('/api/search', {
+            const response = await auth.fetchWithAuth('/api/search', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ search_term: item.product.name, max_results: 1 })
@@ -283,9 +290,13 @@ async function confirmAddQuantity() {
 
     console.log('⚡ Adding to cart with quantity:', quantity, '-', currentProductForQuantity.name);
 
-    // Call API to add to cart
+    // INSTANT: Close modal immediately (optimistic UI)
+    closeModal('quantityModal');
+    showToast(`✓ Adding ${quantity} to cart...`);
+
+    // Call API to add to cart (in background)
     try {
-        const response = await fetch('/api/cart/add', {
+        const response = await auth.fetchWithAuth('/api/cart/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -320,6 +331,7 @@ async function confirmAddQuantity() {
         // AUTO-SAVE after cart change
         scheduleAutoSave();
 
+        // Update toast to show success
         showToast(`✓ Added ${quantity} to cart`);
 
         // Bounce animation
@@ -463,7 +475,7 @@ async function searchProducts() {
 
     try {
         console.log('📡 Sending search request...');
-        const response = await fetch('/api/search', {
+        const response = await auth.fetchWithAuth('/api/search', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -704,7 +716,7 @@ async function updateQuantity(index, newQty) {
     }
 
     try {
-        const response = await fetch('/api/cart/quantity', {
+        const response = await auth.fetchWithAuth('/api/cart/quantity', {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -755,8 +767,11 @@ async function confirmDelete() {
         const itemName = item.product_name || item.name;
         const cartItemId = item.id;
 
+        // Close modal immediately
+        closeModal('deleteModal');
+
         try {
-            const response = await fetch(`/api/cart/${cartItemId}`, {
+            const response = await auth.fetchWithAuth(`/api/cart/${cartItemId}`, {
                 method: 'DELETE'
             });
 
@@ -787,7 +802,7 @@ async function confirmClearCart() {
     closeModal('clearCartButtonModal');
 
     try {
-        const response = await fetch('/api/cart', {
+        const response = await auth.fetchWithAuth('/api/cart', {
             method: 'DELETE'
         });
 
@@ -983,7 +998,7 @@ async function saveCurrentList() {
 
     try {
         // Save to database via API
-        const response = await fetch('/api/lists/save', {
+        const response = await auth.fetchWithAuth('/api/lists/save', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name: listName })
@@ -996,7 +1011,7 @@ async function saveCurrentList() {
 
             // Update frequent items in database (WITHOUT clearing cart)
             try {
-                await fetch('/api/cart/update-frequent', {
+                await auth.fetchWithAuth('/api/cart/update-frequent', {
                     method: 'POST'
                 });
                 console.log('✅ Updated frequent items in database');
@@ -1037,7 +1052,7 @@ async function showPastLists() {
 
     try {
         // Fetch lists from database API
-        const response = await fetch('/api/lists');
+        const response = await auth.fetchWithAuth('/api/lists');
         const data = await response.json();
         const lists = data.lists || [];
 
@@ -1181,7 +1196,7 @@ async function replaceCartWithList(listId) {
         console.log('📋 Loading list from database:', listId);
 
         // Call API to load list (replaces current cart)
-        const response = await fetch(`/api/lists/${listId}/load`, {
+        const response = await auth.fetchWithAuth(`/api/lists/${listId}/load`, {
             method: 'POST'
         });
 
@@ -1211,7 +1226,7 @@ async function addListToCart(listId) {
         console.log('➕ Adding list items to current cart from database:', listId);
 
         // First fetch the list details
-        const response = await fetch('/api/lists');
+        const response = await auth.fetchWithAuth('/api/lists');
         const data = await response.json();
         const lists = data.lists || [];
         const list = lists.find(l => l.id === listId);
@@ -1225,7 +1240,7 @@ async function addListToCart(listId) {
         let addedCount = 0;
         for (const savedItem of list.items) {
             try {
-                const addResponse = await fetch('/api/cart/add', {
+                const addResponse = await auth.fetchWithAuth('/api/cart/add', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -1260,7 +1275,7 @@ async function addListToCart(listId) {
 async function deleteSavedList(listId) {
     try {
         // First fetch the list to get its name for confirmation
-        const response = await fetch('/api/lists');
+        const response = await auth.fetchWithAuth('/api/lists');
         const data = await response.json();
         const lists = data.lists || [];
         const list = lists.find(l => l.id === listId);
@@ -1290,7 +1305,7 @@ async function confirmDeleteList() {
         console.log('🗑️ Deleting list from database:', listId);
 
         // Call API to delete list
-        const deleteResponse = await fetch(`/api/lists/${listId}`, {
+        const deleteResponse = await auth.fetchWithAuth(`/api/lists/${listId}`, {
             method: 'DELETE'
         });
 
@@ -1352,7 +1367,7 @@ async function printShoppingList() {
         await autoSaveCart();
 
         // 2. Update frequent items (for future recommendations)
-        await fetch('/api/cart/update-frequent', { method: 'POST' });
+        await auth.fetchWithAuth('/api/cart/update-frequent', { method: 'POST' });
 
         // 3. Generate print content
         const { html, styles } = generatePrintableList();
@@ -1417,7 +1432,7 @@ async function confirmClearAfterPrint() {
     closeModal('clearCartModal');
 
     try {
-        await fetch('/api/cart', { method: 'DELETE' });
+        await auth.fetchWithAuth('/api/cart', { method: 'DELETE' });
         cart = [];
         renderCart();
         showToast('✓ Cart cleared - ready for next trip!');
@@ -1569,7 +1584,7 @@ async function saveCustomListNow() {
 
     try {
         // Tag today's list with custom name
-        const response = await fetch('/api/lists/tag', {
+        const response = await auth.fetchWithAuth('/api/lists/tag', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name: listName })
@@ -1603,7 +1618,7 @@ async function showRecipes() {
 
     try {
         // Fetch recipes from database API
-        const response = await fetch('/api/recipes');
+        const response = await auth.fetchWithAuth('/api/recipes');
         const data = await response.json();
         const recipes = data.recipes || [];
 
@@ -1716,8 +1731,14 @@ async function confirmSaveRecipe() {
         return;
     }
 
+    // Clear form and close modal immediately (optimistic UI)
+    document.getElementById('recipeNameInput').value = '';
+    document.getElementById('recipeDescriptionInput').value = '';
+    closeModal('saveRecipeModal');
+    showToast(`✓ Saving recipe "${name}"...`);
+
     try {
-        const response = await fetch('/api/recipes/save-cart', {
+        const response = await auth.fetchWithAuth('/api/recipes/save-cart', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name, description: description || null })
@@ -1726,9 +1747,6 @@ async function confirmSaveRecipe() {
         const data = await response.json();
 
         if (data.success) {
-            document.getElementById('recipeNameInput').value = '';
-            document.getElementById('recipeDescriptionInput').value = '';
-            closeModal('saveRecipeModal');
             showToast(`✓ Recipe "${name}" saved!`);
         } else {
             showToast('Failed to save recipe', true);
@@ -1741,7 +1759,7 @@ async function confirmSaveRecipe() {
 
 async function addAllRecipeItems(recipeId) {
     try {
-        const response = await fetch(`/api/recipes/${recipeId}/add-to-cart`, {
+        const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}/add-to-cart`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ item_ids: null }) // null = add all
@@ -1767,7 +1785,7 @@ async function addAllRecipeItems(recipeId) {
 async function startInteractiveAdd(recipeId) {
     try {
         // Fetch recipe details
-        const response = await fetch('/api/recipes');
+        const response = await auth.fetchWithAuth('/api/recipes');
         const data = await response.json();
         const recipe = data.recipes.find(r => r.id === recipeId);
 
@@ -1822,7 +1840,7 @@ async function addRecipeItemToCart() {
     const item = currentRecipeItems[currentRecipeItemIndex];
 
     try {
-        const response = await fetch('/api/cart/add', {
+        const response = await auth.fetchWithAuth('/api/cart/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -1867,7 +1885,7 @@ async function confirmDeleteRecipe() {
     if (!recipeId) return;
 
     try {
-        const response = await fetch(`/api/recipes/${recipeId}`, {
+        const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}`, {
             method: 'DELETE'
         });
 

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 from typing import List, Dict
 from src.scraper.algolia_direct import AlgoliaDirectScraper
 from src.database import get_cached_search, cache_search_results
+from src.auth import get_current_user_optional, AuthUser
 from config.settings import settings
 import logging
 
@@ -60,8 +61,8 @@ async def search_products(search: SearchRequest, background_tasks: BackgroundTas
         )
 
 @router.get("/frequent")
-async def get_frequent():
-    """Get frequently purchased items"""
+async def get_frequent(user: AuthUser = Depends(get_current_user_optional)):
+    """Get frequently purchased items (user-specific)"""
     from src.database import get_frequent_items
-    items = get_frequent_items(limit=20)
+    items = get_frequent_items(user.id, limit=20)
     return {"items": items}

@@ -5,18 +5,42 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import logging
 
-from src.api import search, cart, lists, recipes, health
+from src.api import search, cart, lists, recipes, health, auth
 from config.settings import settings
+from contextlib import asynccontextmanager
 
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI
+# Lifespan context manager for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("🚀 Starting Wegmans Shopping App")
+    if settings.DATABASE_URL:
+        try:
+            from src.database import get_db
+            with get_db() as cursor:
+                cursor.execute("SELECT 1")
+            logger.info("✅ Database connection successful")
+        except Exception as e:
+            logger.error(f"❌ Database connection failed: {e}")
+            raise
+    else:
+        logger.warning("⚠️  DATABASE_URL not set - database operations will fail")
+
+    yield
+
+    # Shutdown (if needed)
+    logger.info("👋 Shutting down Wegmans Shopping App")
+
+# Initialize FastAPI with lifespan
 app = FastAPI(
     title="Wegmans Shopping App",
     version="1.0.0",
-    docs_url="/api/docs" if settings.DEBUG else None
+    docs_url="/api/docs" if settings.DEBUG else None,
+    lifespan=lifespan
 )
 
 # CORS (for development)
@@ -31,6 +55,7 @@ if settings.DEBUG:
 
 # Include API routers
 app.include_router(health.router, prefix="/api", tags=["health"])
+app.include_router(auth.router, prefix="/api", tags=["auth"])  # NEW: Auth endpoints
 app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(cart.router, prefix="/api", tags=["cart"])
 app.include_router(lists.router, prefix="/api", tags=["lists"])
@@ -45,59 +70,13 @@ app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 async def serve_frontend():
     return FileResponse("frontend/index.html")
 
-# Simple session middleware
-@app.middleware("http")
-async def session_middleware(request: Request, call_next):
-    from src.database import get_db
+# Serve password reset page
+@app.get("/reset-password")
+async def serve_reset_password():
+    return FileResponse("frontend/reset-password.html")
 
-    # Get or create user session
-    user_id = request.cookies.get("user_id")
-    needs_user_creation = False
-
-    if not user_id:
-        # Generate unique user ID for new visitors
-        import uuid
-        user_id = str(uuid.uuid4().int)[:12]  # 12-digit unique ID
-        needs_user_creation = True
-        logger.info(f"🆕 New user session created: {user_id}")
-
-    # Create user in database only for new sessions
-    if needs_user_creation:
-        try:
-            with get_db() as cursor:
-                cursor.execute(
-                    "INSERT INTO users (id, username) VALUES (%s, %s)",
-                    (int(user_id), f"user_{user_id}")
-                )
-                logger.info(f"✅ User {user_id} created in database")
-        except Exception as e:
-            logger.error(f"Failed to create user in database: {e}")
-
-    request.state.user_id = int(user_id)
-    response = await call_next(request)
-
-    # Set cookie if not present
-    if not request.cookies.get("user_id"):
-        response.set_cookie("user_id", user_id, max_age=31536000)  # 1 year
-        logger.info(f"🍪 Cookie set for user: {user_id}")
-
-    return response
-
-@app.on_event("startup")
-async def startup():
-    logger.info("🚀 Starting Wegmans Shopping App")
-    # Test database connection (only if DATABASE_URL is set)
-    if settings.DATABASE_URL:
-        try:
-            from src.database import get_db
-            with get_db() as cursor:
-                cursor.execute("SELECT 1")
-            logger.info("✅ Database connection successful")
-        except Exception as e:
-            logger.error(f"❌ Database connection failed: {e}")
-            raise
-    else:
-        logger.warning("⚠️  DATABASE_URL not set - database operations will fail")
+# OLD session middleware removed - now using Supabase Auth with JWT tokens
+# Anonymous users are created on-demand in src/auth.py::create_anonymous_user()
 
 if __name__ == "__main__":
     uvicorn.run(

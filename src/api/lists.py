@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from src.database import (
     get_user_lists,
@@ -7,6 +7,7 @@ from src.database import (
     get_user_cart,
     get_db
 )
+from src.auth import get_current_user_optional, AuthUser
 
 router = APIRouter()
 
@@ -14,42 +15,51 @@ class SaveListRequest(BaseModel):
     name: str
 
 @router.get("/lists")
-async def get_lists(request: Request):
+async def get_lists(user: AuthUser = Depends(get_current_user_optional)):
     """Get all saved lists for user"""
-    user_id = request.state.user_id
-    lists = get_user_lists(user_id)
+    lists = get_user_lists(user.id)
     return {"lists": lists}
 
 @router.post("/lists/save")
-async def save_list(save_req: SaveListRequest, request: Request):
+async def save_list(save_req: SaveListRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Save current cart as a list"""
-    user_id = request.state.user_id
-    
     # Check cart isn't empty
-    cart = get_user_cart(user_id)
+    cart = get_user_cart(user.id)
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
-    
-    list_id = save_cart_as_list(user_id, save_req.name)
-    
+
+    list_id = save_cart_as_list(user.id, save_req.name)
+
     return {"success": True, "list_id": list_id}
 
 @router.post("/lists/{list_id}/load")
-async def load_list(list_id: int, request: Request):
+async def load_list(list_id: int, user: AuthUser = Depends(get_current_user_optional)):
     """Load a saved list into cart"""
-    user_id = request.state.user_id
-    
     try:
-        load_list_to_cart(user_id, list_id)
-        cart = get_user_cart(user_id)
-        return {"success": True, "cart": cart}
+        # Get list name before loading
+        with get_db() as cursor:
+            cursor.execute("""
+                SELECT name, custom_name FROM saved_lists
+                WHERE id = %s AND user_id = %s
+            """, (list_id, user.id))
+            list_row = cursor.fetchone()
+
+            if not list_row:
+                raise ValueError("List not found")
+
+            # Use custom_name if set, else use name
+            list_name = list_row['custom_name'] or list_row['name']
+
+        load_list_to_cart(user.id, list_id)
+        cart = get_user_cart(user.id)
+        return {"success": True, "cart": cart, "list_name": list_name}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.delete("/lists/{list_id}")
-async def delete_list(list_id: int, request: Request):
+async def delete_list(list_id: int, user: AuthUser = Depends(get_current_user_optional)):
     """Delete a saved list and update frequent items counts"""
-    user_id = request.state.user_id
+    user_id = user.id
 
     with get_db() as cursor:
         # Verify list belongs to user
@@ -88,14 +98,14 @@ async def delete_list(list_id: int, request: Request):
     return {"success": True}
 
 @router.post("/lists/auto-save")
-async def auto_save_list(save_req: SaveListRequest, request: Request):
+async def auto_save_list(save_req: SaveListRequest, user: AuthUser = Depends(get_current_user_optional)):
     """
     Auto-save cart to date-based list (create or update today's list)
 
     If list with same name exists from today, update it.
     Otherwise create new list.
     """
-    user_id = request.state.user_id
+    user_id = user.id
     list_name = save_req.name
 
     # Check cart isn't empty
@@ -148,9 +158,9 @@ async def auto_save_list(save_req: SaveListRequest, request: Request):
             return {"success": True, "list_id": list_id, "updated": False}
 
 @router.get("/lists/today")
-async def get_todays_list(request: Request):
+async def get_todays_list(user: AuthUser = Depends(get_current_user_optional)):
     """Get summary of today's auto-saved list"""
-    user_id = request.state.user_id
+    user_id = user.id
 
     with get_db() as cursor:
         cursor.execute("""
@@ -174,13 +184,13 @@ async def get_todays_list(request: Request):
             return {"exists": False}
 
 @router.post("/lists/tag")
-async def tag_todays_list(save_req: SaveListRequest, request: Request):
+async def tag_todays_list(save_req: SaveListRequest, user: AuthUser = Depends(get_current_user_optional)):
     """
     Tag today's auto-saved list with a custom name
 
     Instead of creating duplicate list, adds custom_name tag to today's list.
     """
-    user_id = request.state.user_id
+    user_id = user.id
     custom_name = save_req.name
 
     # Check cart isn't empty

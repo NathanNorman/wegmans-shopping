@@ -11,3 +11,8 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 psycopg2-binary>=2.9.9  # PostgreSQL driver
 pydantic>=2.5.0
+
+# Authentication
+supabase>=2.0.0  # Supabase Python client
+pyjwt>=2.8.0  # JWT token handling
+email-validator>=2.1.0  # Email validation for Pydantic

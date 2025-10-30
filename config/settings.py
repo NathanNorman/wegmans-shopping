@@ -24,6 +24,11 @@ class Settings:
     # Database - Supabase PostgreSQL
     DATABASE_URL = os.getenv("DATABASE_URL", "")
 
+    # Supabase Auth
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://pisakkjmyeobvcgxbmhk.supabase.co")
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")  # Public key (safe for frontend)
+    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # SECRET (backend only!)
+
     # Scraper configuration
     STORE_LOCATION = os.getenv("STORE_LOCATION", "Raleigh")
     SCRAPER_HEADLESS = os.getenv("SCRAPER_HEADLESS", "true").lower() == "true"

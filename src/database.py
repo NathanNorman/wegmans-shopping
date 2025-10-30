@@ -212,13 +212,14 @@ def load_list_to_cart(user_id: int, list_id: int):
 
 # === Frequent Items ===
 
-def update_frequent_items(user_id: int):
-    """Update frequent items from completed cart"""
+def update_frequent_items(user_id: str):
+    """Update frequent items from completed cart (user-specific)"""
     with get_db() as cursor:
         cursor.execute("""
             INSERT INTO frequent_items
-            (product_name, price, aisle, image_url, purchase_count, is_sold_by_weight, last_purchased)
+            (user_id, product_name, price, aisle, image_url, purchase_count, is_sold_by_weight, last_purchased)
             SELECT
+                %s,
                 product_name,
                 price,
                 aisle,
@@ -228,22 +229,23 @@ def update_frequent_items(user_id: int):
                 CURRENT_TIMESTAMP
             FROM shopping_carts
             WHERE user_id = %s
-            ON CONFLICT (product_name) DO UPDATE SET
+            ON CONFLICT (user_id, product_name) DO UPDATE SET
                 purchase_count = frequent_items.purchase_count + 1,
                 last_purchased = CURRENT_TIMESTAMP,
                 price = EXCLUDED.price,
                 aisle = EXCLUDED.aisle,
                 image_url = EXCLUDED.image_url
-        """, (user_id,))
+        """, (user_id, user_id))
 
-def get_frequent_items(limit: int = 20) -> List[Dict]:
-    """Get most frequently purchased items"""
+def get_frequent_items(user_id: str, limit: int = 20) -> List[Dict]:
+    """Get most frequently purchased items for specific user"""
     with get_db() as cursor:
         cursor.execute("""
             SELECT * FROM frequent_items
+            WHERE user_id = %s
             ORDER BY purchase_count DESC, last_purchased DESC
             LIMIT %s
-        """, (limit,))
+        """, (user_id, limit))
         return cursor.fetchall()
 
 # === Recipe Operations ===

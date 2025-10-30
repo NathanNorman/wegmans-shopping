@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from src.database import (
@@ -13,6 +13,7 @@ from src.database import (
     load_recipe_to_cart,
     get_user_cart
 )
+from src.auth import get_current_user_optional, AuthUser
 
 router = APIRouter()
 
@@ -45,23 +46,23 @@ class LoadRecipeRequest(BaseModel):
     item_ids: Optional[List[int]] = None
 
 @router.get("/recipes")
-async def get_recipes(request: Request):
+async def get_recipes(user: AuthUser = Depends(get_current_user_optional)):
     """Get all recipes for user"""
-    user_id = request.state.user_id
+    user_id = user.id
     recipes = get_user_recipes(user_id)
     return {"recipes": recipes}
 
 @router.post("/recipes/create")
-async def create_new_recipe(recipe_req: CreateRecipeRequest, request: Request):
+async def create_new_recipe(recipe_req: CreateRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Create a new empty recipe"""
-    user_id = request.state.user_id
+    user_id = user.id
     recipe_id = create_recipe(user_id, recipe_req.name, recipe_req.description)
     return {"success": True, "recipe_id": recipe_id}
 
 @router.post("/recipes/save-cart")
-async def save_cart_recipe(recipe_req: SaveCartAsRecipeRequest, request: Request):
+async def save_cart_recipe(recipe_req: SaveCartAsRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Save current cart as a recipe"""
-    user_id = request.state.user_id
+    user_id = user.id
 
     # Check cart isn't empty
     cart = get_user_cart(user_id)
@@ -73,9 +74,9 @@ async def save_cart_recipe(recipe_req: SaveCartAsRecipeRequest, request: Request
     return {"success": True, "recipe_id": recipe_id}
 
 @router.post("/recipes/{recipe_id}/items")
-async def add_item(recipe_id: int, item_req: AddItemToRecipeRequest, request: Request):
+async def add_item(recipe_id: int, item_req: AddItemToRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Add an item to a recipe"""
-    user_id = request.state.user_id
+    user_id = user.id
 
     # Verify recipe belongs to user
     recipes = get_user_recipes(user_id)
@@ -96,21 +97,21 @@ async def add_item(recipe_id: int, item_req: AddItemToRecipeRequest, request: Re
     return {"success": True}
 
 @router.put("/recipes/items/{item_id}/quantity")
-async def update_item_quantity(item_id: int, qty_req: UpdateRecipeItemQuantityRequest, request: Request):
+async def update_item_quantity(item_id: int, qty_req: UpdateRecipeItemQuantityRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Update item quantity in recipe"""
     update_recipe_item_quantity(item_id, qty_req.quantity)
     return {"success": True}
 
 @router.delete("/recipes/items/{item_id}")
-async def remove_item(item_id: int, request: Request):
+async def remove_item(item_id: int, user: AuthUser = Depends(get_current_user_optional)):
     """Remove item from recipe"""
     remove_item_from_recipe(item_id)
     return {"success": True}
 
 @router.put("/recipes/{recipe_id}")
-async def update_recipe_metadata(recipe_id: int, update_req: UpdateRecipeRequest, request: Request):
+async def update_recipe_metadata(recipe_id: int, update_req: UpdateRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """Update recipe name or description"""
-    user_id = request.state.user_id
+    user_id = user.id
 
     # Verify recipe belongs to user
     recipes = get_user_recipes(user_id)
@@ -121,21 +122,21 @@ async def update_recipe_metadata(recipe_id: int, update_req: UpdateRecipeRequest
     return {"success": True}
 
 @router.delete("/recipes/{recipe_id}")
-async def delete_recipe_endpoint(recipe_id: int, request: Request):
+async def delete_recipe_endpoint(recipe_id: int, user: AuthUser = Depends(get_current_user_optional)):
     """Delete a recipe"""
-    user_id = request.state.user_id
+    user_id = user.id
     delete_recipe(user_id, recipe_id)
     return {"success": True}
 
 @router.post("/recipes/{recipe_id}/add-to-cart")
-async def load_recipe(recipe_id: int, load_req: LoadRecipeRequest, request: Request):
+async def load_recipe(recipe_id: int, load_req: LoadRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """
     Load recipe items into cart
 
     If item_ids is provided, only those items are added.
     Otherwise, all items are added.
     """
-    user_id = request.state.user_id
+    user_id = user.id
 
     try:
         load_recipe_to_cart(user_id, recipe_id, load_req.item_ids)
