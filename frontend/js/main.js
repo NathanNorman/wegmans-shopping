@@ -1405,13 +1405,6 @@ async function printShoppingList() {
         // Set print content
         printDiv.innerHTML = html;
 
-        // Setup afterprint to show modal
-        const afterPrintHandler = () => {
-            openModal('clearCartModal');
-            window.removeEventListener('afterprint', afterPrintHandler);
-        };
-        window.addEventListener('afterprint', afterPrintHandler, { once: true });
-
         // Print immediately
         window.print();
 
@@ -1421,19 +1414,6 @@ async function printShoppingList() {
     }
 }
 
-async function confirmClearAfterPrint() {
-    closeModal('clearCartModal');
-
-    try {
-        await auth.fetchWithAuth('/api/cart', { method: 'DELETE' });
-        cart = [];
-        renderCart();
-        showToast('✓ Cart cleared - ready for next trip!');
-    } catch (error) {
-        showToast('Failed to clear cart', true);
-        console.error('Clear cart error:', error);
-    }
-}
 
 function getMobilePrintStyles() {
     return `
