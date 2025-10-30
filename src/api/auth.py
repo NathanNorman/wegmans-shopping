@@ -112,13 +112,12 @@ async def sign_up(request: SignUpRequest):
         # Create user in our database
         with get_db() as cursor:
             cursor.execute("""
-                INSERT INTO users (id, email, is_anonymous, supabase_user_id, created_at)
-                VALUES (%s, %s, FALSE, %s, CURRENT_TIMESTAMP)
+                INSERT INTO users (id, email, is_anonymous, created_at)
+                VALUES (%s, %s, FALSE, CURRENT_TIMESTAMP)
                 ON CONFLICT (id) DO UPDATE SET
                     email = EXCLUDED.email,
-                    is_anonymous = FALSE,
-                    supabase_user_id = EXCLUDED.supabase_user_id
-            """, (str(user.id), user.email, str(user.id)))
+                    is_anonymous = FALSE
+            """, (str(user.id), user.email))
 
         # Migrate anonymous user data if provided
         if request.anonymous_user_id:
@@ -186,7 +185,7 @@ async def sign_in(request: SignInRequest):
             cursor.execute("""
                 UPDATE users
                 SET last_login = CURRENT_TIMESTAMP
-                WHERE supabase_user_id = %s
+                WHERE id = %s
             """, (str(user.id),))
 
         logger.info(f"✓ User signed in: {user.email}")

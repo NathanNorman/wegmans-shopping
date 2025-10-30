@@ -136,11 +136,8 @@ async def auto_save_list(save_req: SaveListRequest, user: AuthUser = Depends(get
                 WHERE user_id = %s
             """, (list_id, user_id))
 
-            cursor.execute("""
-                UPDATE saved_lists
-                SET last_updated = CURRENT_TIMESTAMP
-                WHERE id = %s
-            """, (list_id,))
+            # Note: last_updated column was removed in migration 009
+            # No need to update timestamp - created_at is sufficient
 
             return {"success": True, "list_id": list_id, "updated": True}
         else:

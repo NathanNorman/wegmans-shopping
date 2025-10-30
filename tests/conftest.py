@@ -67,11 +67,17 @@ def reset_rate_limiter():
 @pytest.fixture(scope="function")
 def client():
     """
-    FastAPI test client
+    FastAPI test client with anonymous user ID
 
-    Provides a requests-like interface for testing API endpoints
+    Provides a requests-like interface for testing API endpoints.
+    Includes X-Anonymous-User-ID header for consistent user identity across requests.
     """
+    import uuid
+    anonymous_id = str(uuid.uuid4())
+
     with TestClient(app) as test_client:
+        # Set default headers for all requests
+        test_client.headers = {"X-Anonymous-User-ID": anonymous_id}
         yield test_client
 
 
