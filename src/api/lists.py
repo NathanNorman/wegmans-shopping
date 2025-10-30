@@ -39,7 +39,7 @@ async def load_list(list_id: int, user: AuthUser = Depends(get_current_user_opti
         # Get list name before loading
         with get_db() as cursor:
             cursor.execute("""
-                SELECT name, custom_name FROM saved_lists
+                SELECT name FROM saved_lists
                 WHERE id = %s AND user_id = %s
             """, (list_id, user.id))
             list_row = cursor.fetchone()
@@ -47,8 +47,7 @@ async def load_list(list_id: int, user: AuthUser = Depends(get_current_user_opti
             if not list_row:
                 raise ValueError("List not found")
 
-            # Use custom_name if set, else use name
-            list_name = list_row['custom_name'] or list_row['name']
+            list_name = list_row['name']
 
         load_list_to_cart(user.id, list_id)
         cart = get_user_cart(user.id)
@@ -164,7 +163,7 @@ async def get_todays_list(user: AuthUser = Depends(get_current_user_optional)):
 
     with get_db() as cursor:
         cursor.execute("""
-            SELECT l.id, l.name, l.created_at, l.custom_name,
+            SELECT l.id, l.name, l.created_at,
                    COUNT(li.id) as item_count,
                    COALESCE(SUM(li.quantity), 0) as total_quantity,
                    COALESCE(SUM(li.price * li.quantity), 0) as total_price
@@ -173,7 +172,7 @@ async def get_todays_list(user: AuthUser = Depends(get_current_user_optional)):
             WHERE l.user_id = %s
             AND l.is_auto_saved = TRUE
             AND DATE(l.created_at) = CURRENT_DATE
-            GROUP BY l.id, l.name, l.created_at, l.custom_name
+            GROUP BY l.id, l.name, l.created_at
         """, (user_id,))
 
         today = cursor.fetchone()

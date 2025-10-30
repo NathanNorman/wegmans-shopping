@@ -1059,33 +1059,26 @@ async function showPastLists() {
         if (lists.length === 0) {
             container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No saved lists yet</p><p class="text-xs">Complete a shopping list and save it to see it here!</p></div>';
         } else {
-            // Separate by custom tags (all auto-saved, some with custom_name)
-            const customTagged = lists.filter(l => l.is_auto_saved && l.custom_name);
-            const regularHistory = lists.filter(l => l.is_auto_saved && !l.custom_name);
-            const manualSaves = lists.filter(l => !l.is_auto_saved);
+            // Simple two-category system:
+            // 1. Custom saved lists (is_auto_saved=FALSE) - User-named lists
+            // 2. Shopping history (is_auto_saved=TRUE) - Auto-saved date lists
+            const customLists = lists.filter(l => !l.is_auto_saved);
+            const shoppingHistory = lists.filter(l => l.is_auto_saved);
 
             let html = '';
 
-            // Show custom tagged lists first
-            if (customTagged.length > 0) {
-                html += '<h3 style="margin: 0 0 var(--space-4) 0; padding: var(--space-3); background: var(--success-green); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📝 Custom Lists</h3>';
-                customTagged.forEach(list => {
+            // Show custom lists first (most important)
+            if (customLists.length > 0) {
+                html += '<h3 style="margin: 0 0 var(--space-4) 0; padding: var(--space-3); background: var(--primary-wegmans); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">⭐ My Custom Lists</h3>';
+                customLists.forEach(list => {
                     html += renderListCard(list);
                 });
             }
 
-            // Show regular shopping history
-            if (regularHistory.length > 0) {
+            // Show shopping history second
+            if (shoppingHistory.length > 0) {
                 html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-100); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📅 Shopping History</h3>';
-                regularHistory.forEach(list => {
-                    html += renderListCard(list);
-                });
-            }
-
-            // Show custom saved lists
-            if (manualSaves.length > 0) {
-                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--primary-wegmans); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">⭐ My Custom Lists</h3>';
-                manualSaves.forEach(list => {
+                shoppingHistory.forEach(list => {
                     html += renderListCard(list);
                 });
             }
@@ -1103,9 +1096,9 @@ function renderListCard(list) {
     const date = new Date(list.created_at);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // Display custom_name prominently if set, otherwise show date
-    const displayName = list.custom_name || list.name;
-    const subtitle = list.custom_name ? list.name : dateStr;
+    // Display list name (custom lists show user name, auto-saved show date)
+    const displayName = list.name;
+    const subtitle = dateStr;
 
     let html = `
         <div class="saved-list-item">
