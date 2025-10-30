@@ -1082,9 +1082,9 @@ async function showPastLists() {
                 });
             }
 
-            // Show old manual saves if any exist
+            // Show custom saved lists
             if (manualSaves.length > 0) {
-                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--gray-300); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">📦 Old Lists</h3>';
+                html += '<h3 style="margin: var(--space-8) 0 var(--space-4) 0; padding: var(--space-3); background: var(--primary-wegmans); color: var(--white); border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.5px;">⭐ My Custom Lists</h3>';
                 manualSaves.forEach(list => {
                     html += renderListCard(list);
                 });
