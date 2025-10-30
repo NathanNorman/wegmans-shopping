@@ -138,3 +138,77 @@ EOF
 - Use JavaScript device detection, generate inline styles
 - Hidden div + @media print is most reliable cross-browser approach
 - Test with actual Print Preview on mobile device, not desktop DevTools
+
+## Render CLI Usage
+
+**Service ID**: `srv-d3vt00h5pdvs7390bh10`
+**Service Name**: `wegmans-shopping`
+**URL**: https://wegmans-shopping.onrender.com
+
+### Common Commands
+
+**IMPORTANT**: Render CLI requires `-o` flag for non-interactive mode in Claude Code.
+
+**List services:**
+```bash
+render services list -o json
+```
+
+**Get service logs (last 100 lines):**
+```bash
+render logs -o text --resources srv-d3vt00h5pdvs7390bh10 --limit 100
+```
+
+**Get recent logs (tail):**
+```bash
+render logs -o text --resources srv-d3vt00h5pdvs7390bh10 --limit 50 | tail -30
+```
+
+**Filter logs by text:**
+```bash
+render logs -o text --resources srv-d3vt00h5pdvs7390bh10 --text "ERROR" --limit 100
+```
+
+**Check deployment status:**
+```bash
+render services list -o json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for item in data:
+    if item['service']['name'] == 'wegmans-shopping':
+        print(f\"Updated: {item['service']['updatedAt']}\")
+        print(f\"Status: {item['service']['suspended']}\")
+"
+```
+
+### Troubleshooting
+
+**If logs command fails with TTY error:**
+- Always use `-o text` or `-o json` flag
+- Always use `--resources` flag with service ID
+
+**If build fails:**
+```bash
+# Get build logs
+render logs -o text --resources srv-d3vt00h5pdvs7390bh10 --limit 200 | grep -A 10 "ERROR"
+```
+
+**Common build issues:**
+- Dockerfile referencing removed dependencies (e.g., Playwright)
+- Missing dependencies in requirements.txt
+- Environment variables not set in Render dashboard
+
+### Deployment Process
+
+1. **Push to GitHub**: `git push origin main`
+2. **Render auto-detects** push and starts build
+3. **Build takes** ~2-3 minutes (faster without Playwright)
+4. **Check logs**: `render logs -o text --resources srv-d3vt00h5pdvs7390bh10 --limit 50`
+5. **Verify**: `curl https://wegmans-shopping.onrender.com/api/health`
+
+### Quick Health Check
+
+```bash
+# Check if production is responding
+curl -s https://wegmans-shopping.onrender.com/api/health | python3 -m json.tool
+```
