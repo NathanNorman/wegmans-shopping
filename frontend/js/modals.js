@@ -92,14 +92,23 @@ async function handleLogin(event) {
 
     try {
         await window.auth.signIn(email, password);
+
+        // Close modal immediately
         closeModal('login-modal');
+
         // Clear form
         event.target.reset();
+
+        // Show success message
+        console.log('✓ Login successful, reloading...');
+
+        // Reload page to ensure fresh state
+        window.location.reload();
     } catch (error) {
         // Error already shown by signIn()
         console.error('Login failed:', error);
-    } finally {
-        // Re-enable submit button
+
+        // Re-enable submit button on error
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
     }
@@ -135,14 +144,20 @@ async function handleRegister(event) {
 
     try {
         await window.auth.signUp(email, password);
+
+        // Close modal immediately
         closeModal('register-modal');
+
         // Clear form
         event.target.reset();
+
+        // Note: Alert is shown by signUp() function
+        // Page will reload from auth state change, showing logged-in state
     } catch (error) {
         // Error already shown by signUp()
         console.error('Registration failed:', error);
-    } finally {
-        // Re-enable submit button
+
+        // Re-enable submit button on error
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
     }
