@@ -25,7 +25,7 @@ def get_db():
 
 # === Cart Operations ===
 
-def get_user_cart(user_id: int) -> List[Dict]:
+def get_user_cart(user_id: str) -> List[Dict]:
     """Get all items in user's cart"""
     with get_db() as cursor:
         cursor.execute("""
@@ -35,7 +35,7 @@ def get_user_cart(user_id: int) -> List[Dict]:
         """, (user_id,))
         return cursor.fetchall()
 
-def add_to_cart(user_id: int, product: dict, quantity: float = 1):
+def add_to_cart(user_id: str, product: dict, quantity: float = 1):
     """
     Add item to cart (or update quantity if exists)
     
@@ -78,7 +78,7 @@ def add_to_cart(user_id: int, product: dict, quantity: float = 1):
                 product.get('unit_price')
             ))
 
-def update_cart_quantity(user_id: int, cart_item_id: int, quantity: float):
+def update_cart_quantity(user_id: str, cart_item_id: int, quantity: float):
     """Update item quantity (supports decimals for weight)"""
     with get_db() as cursor:
         cursor.execute("""
@@ -87,7 +87,7 @@ def update_cart_quantity(user_id: int, cart_item_id: int, quantity: float):
             WHERE id = %s AND user_id = %s
         """, (quantity, cart_item_id, user_id))
 
-def remove_from_cart(user_id: int, cart_item_id: int):
+def remove_from_cart(user_id: str, cart_item_id: int):
     """Remove item from cart"""
     with get_db() as cursor:
         cursor.execute("""
@@ -95,7 +95,7 @@ def remove_from_cart(user_id: int, cart_item_id: int):
             WHERE id = %s AND user_id = %s
         """, (cart_item_id, user_id))
 
-def clear_cart(user_id: int):
+def clear_cart(user_id: str):
     """Clear entire cart"""
     with get_db() as cursor:
         cursor.execute("DELETE FROM shopping_carts WHERE user_id = %s", (user_id,))
@@ -137,7 +137,7 @@ def cache_search_results(search_term: str, results: List[Dict]):
 
 # === Saved Lists Operations ===
 
-def get_user_lists(user_id: int) -> List[Dict]:
+def get_user_lists(user_id: str) -> List[Dict]:
     """Get all saved lists for user with their items"""
     with get_db() as cursor:
         # Get all lists
@@ -165,7 +165,7 @@ def get_user_lists(user_id: int) -> List[Dict]:
 
         return lists
 
-def save_cart_as_list(user_id: int, list_name: str) -> int:
+def save_cart_as_list(user_id: str, list_name: str) -> int:
     """Save current cart as a list"""
     with get_db() as cursor:
         # Create list
@@ -187,7 +187,7 @@ def save_cart_as_list(user_id: int, list_name: str) -> int:
         
         return list_id
 
-def load_list_to_cart(user_id: int, list_id: int):
+def load_list_to_cart(user_id: str, list_id: int):
     """Load a saved list into cart"""
     with get_db() as cursor:
         # Verify list belongs to user
@@ -250,7 +250,7 @@ def get_frequent_items(user_id: str, limit: int = 20) -> List[Dict]:
 
 # === Recipe Operations ===
 
-def get_user_recipes(user_id: int) -> List[Dict]:
+def get_user_recipes(user_id: str) -> List[Dict]:
     """Get all recipes for user with their items"""
     with get_db() as cursor:
         # Get all recipes
@@ -280,7 +280,7 @@ def get_user_recipes(user_id: int) -> List[Dict]:
 
         return recipes
 
-def create_recipe(user_id: int, name: str, description: str = None) -> int:
+def create_recipe(user_id: str, name: str, description: str = None) -> int:
     """Create a new recipe"""
     with get_db() as cursor:
         cursor.execute("""
@@ -290,7 +290,7 @@ def create_recipe(user_id: int, name: str, description: str = None) -> int:
         """, (user_id, name, description))
         return cursor.fetchone()['id']
 
-def save_cart_as_recipe(user_id: int, name: str, description: str = None) -> int:
+def save_cart_as_recipe(user_id: str, name: str, description: str = None) -> int:
     """Save current cart as a recipe"""
     with get_db() as cursor:
         # Create recipe
@@ -369,7 +369,7 @@ def update_recipe(recipe_id: int, name: str = None, description: str = None):
                 WHERE id = %s
             """, (description, recipe_id))
 
-def delete_recipe(user_id: int, recipe_id: int):
+def delete_recipe(user_id: str, recipe_id: int):
     """Delete a recipe (cascade deletes items)"""
     with get_db() as cursor:
         cursor.execute("""
@@ -377,7 +377,7 @@ def delete_recipe(user_id: int, recipe_id: int):
             WHERE id = %s AND user_id = %s
         """, (recipe_id, user_id))
 
-def load_recipe_to_cart(user_id: int, recipe_id: int, item_ids: List[int] = None):
+def load_recipe_to_cart(user_id: str, recipe_id: int, item_ids: List[int] = None):
     """
     Load recipe items into cart
 
