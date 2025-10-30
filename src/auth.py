@@ -163,7 +163,7 @@ async def get_current_user_optional(
         return await create_anonymous_user()
 
     try:
-        return await get_current_user(credentials, request)
+        return await get_current_user(request, credentials)
     except HTTPException:
         # Token invalid - fall back to anonymous
         logger.debug("Token invalid, falling back to anonymous user")
