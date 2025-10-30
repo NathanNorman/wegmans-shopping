@@ -160,40 +160,43 @@ async function fetchMissingImagesForFrequentItems(frequentItems) {
         return;
     }
 
-    console.log(`🖼️  Fetching images for ${itemsNeedingImages.length} frequent items...`);
+    console.log(`🖼️  Fetching images for ${itemsNeedingImages.length} frequent items (parallel batch)...`);
 
-    for (const item of itemsNeedingImages) {
-        try {
-            // Search for the product to get fresh data with image
-            const response = await auth.fetchWithAuth('/api/search', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ search_term: item.product.name, max_results: 1 })
-            });
+    try {
+        // Batch API call - fetch all images in one request
+        const productNames = itemsNeedingImages.map(item => item.product.name);
 
-            const data = await response.json();
+        const response = await auth.fetchWithAuth('/api/images/fetch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ product_names: productNames })
+        });
 
-            if (data.products && data.products.length > 0) {
-                const product = data.products[0];
+        const data = await response.json();
 
-                // Update the item's image in memory
-                if (product.image) {
-                    item.product.image = product.image;
-                    console.log(`  ✓ Found image for: ${item.product.name.substring(0, 40)}`);
-
-                    // Re-render to show new image
-                    renderFrequentItems(frequentItems);
+        // Update images in memory
+        let updatedCount = 0;
+        data.results.forEach(result => {
+            if (result.success && result.image_url) {
+                const item = itemsNeedingImages.find(i => i.product.name === result.product_name);
+                if (item) {
+                    item.product.image = result.image_url;
+                    updatedCount++;
                 }
             }
-        } catch (error) {
-            console.log(`  ✗ Failed to fetch image for: ${item.product.name.substring(0, 40)}`);
+        });
+
+        if (updatedCount > 0) {
+            // Re-render once with all updated images
+            renderFrequentItems(frequentItems);
+            console.log(`✅ Updated ${updatedCount} images (${data.success_count}/${data.total_count} found)`);
+        } else {
+            console.log('ℹ️  No new images found');
         }
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (error) {
+        console.error('❌ Failed to fetch images:', error);
     }
-
-    console.log('✅ Finished fetching missing images');
 }
 
 function renderFrequentItems(frequentItems) {

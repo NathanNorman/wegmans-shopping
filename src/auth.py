@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 # Token cache: {token: (user_data, expiry_timestamp)}
 _token_cache = {}
+_cache_last_cleanup = datetime.now().timestamp()
+CACHE_CLEANUP_INTERVAL = 300  # Clean up expired tokens every 5 minutes
 
 # Initialize Supabase client (backend - uses service key for admin operations)
 try:
@@ -32,6 +34,32 @@ except Exception as e:
 
 # Security scheme for JWT bearer tokens
 security = HTTPBearer(auto_error=False)
+
+
+def cleanup_expired_tokens():
+    """
+    Remove expired tokens from cache to prevent memory leak.
+
+    Called periodically (every 5 minutes) during token verification.
+    """
+    global _cache_last_cleanup, _token_cache
+
+    now = datetime.now().timestamp()
+
+    # Only cleanup if interval has passed
+    if now - _cache_last_cleanup < CACHE_CLEANUP_INTERVAL:
+        return
+
+    # Remove expired tokens
+    expired_tokens = [token for token, (_, expiry) in _token_cache.items() if now >= expiry]
+
+    for token in expired_tokens:
+        del _token_cache[token]
+
+    if expired_tokens:
+        logger.info(f"🧹 Cleaned up {len(expired_tokens)} expired tokens from cache")
+
+    _cache_last_cleanup = now
 
 
 class AuthUser:
@@ -76,6 +104,9 @@ async def get_current_user(
 
     token = credentials.credentials
     start = time.time()
+
+    # Periodic cleanup of expired tokens (prevents memory leak)
+    cleanup_expired_tokens()
 
     try:
         # Check token cache first (avoid network call)

@@ -27,4 +27,19 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Debug files (should never be committed)
+debug_page.html
+debug_screenshot.png
 algolia_responses.json
+debug_output/
+debug_*.html
+debug_*.png
+debug_*.json
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.log

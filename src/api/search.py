@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from pydantic import BaseModel
 from typing import List, Dict
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from src.scraper.algolia_direct import AlgoliaDirectScraper
 from src.database import get_cached_search, cache_search_results
 from src.auth import get_current_user_optional, AuthUser
@@ -10,6 +12,9 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 # Direct Algolia scraper (no browser needed!)
 scraper = AlgoliaDirectScraper()
 
@@ -17,8 +22,19 @@ class SearchRequest(BaseModel):
     search_term: str
     max_results: int = 10
 
+def rate_limit_decorator():
+    """Conditionally apply rate limiting based on settings"""
+    if settings.ENABLE_RATE_LIMITING:
+        return limiter.limit("60/minute")
+    else:
+        # No-op decorator for tests
+        def noop_decorator(func):
+            return func
+        return noop_decorator
+
 @router.post("/search")
-async def search_products(search: SearchRequest, background_tasks: BackgroundTasks):
+@rate_limit_decorator()
+async def search_products(request: Request, search: SearchRequest, background_tasks: BackgroundTasks):
     """
     Search for products via direct Algolia API (with caching)
 

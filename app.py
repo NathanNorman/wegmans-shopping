@@ -2,16 +2,22 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uvicorn
 import logging
 
-from src.api import search, cart, lists, recipes, health, auth
+from src.api import search, cart, lists, recipes, health, auth, images
 from config.settings import settings
 from contextlib import asynccontextmanager
 
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
@@ -43,6 +49,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS (for development)
 if settings.DEBUG:
     app.add_middleware(
@@ -55,11 +65,12 @@ if settings.DEBUG:
 
 # Include API routers
 app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(auth.router, prefix="/api", tags=["auth"])  # NEW: Auth endpoints
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(search.router, prefix="/api", tags=["search"])
 app.include_router(cart.router, prefix="/api", tags=["cart"])
 app.include_router(lists.router, prefix="/api", tags=["lists"])
 app.include_router(recipes.router, prefix="/api", tags=["recipes"])
+app.include_router(images.router, prefix="/api", tags=["images"])
 
 # Serve static files (CSS/JS)
 app.mount("/css", StaticFiles(directory="frontend/css"), name="css")

@@ -1,27 +1,76 @@
 """
 Database module - PostgreSQL via Supabase
+
+Uses connection pooling for improved performance and resource management.
 """
 import psycopg2
+from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
 from typing import Optional, List, Dict
 import json
+import logging
 from config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+# Connection pool (initialized on first import)
+_connection_pool = None
+
+def get_connection_pool():
+    """
+    Get or create the connection pool (singleton pattern)
+
+    Pool configuration:
+    - minconn: 2 (always keep 2 connections ready)
+    - maxconn: 10 (max 10 concurrent connections)
+    - Connections auto-released after use
+    """
+    global _connection_pool
+
+    if _connection_pool is None:
+        try:
+            _connection_pool = pool.ThreadedConnectionPool(
+                minconn=2,
+                maxconn=10,
+                dsn=settings.DATABASE_URL
+            )
+            logger.info("✓ Database connection pool created (2-10 connections)")
+        except Exception as e:
+            logger.error(f"✗ Failed to create connection pool: {e}")
+            raise
+
+    return _connection_pool
 
 @contextmanager
 def get_db():
-    """Context manager for database connections"""
-    conn = psycopg2.connect(settings.DATABASE_URL)
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    """
+    Context manager for database connections from pool
+
+    Automatically:
+    - Gets connection from pool
+    - Returns connection to pool after use
+    - Commits on success
+    - Rolls back on error
+    """
+    conn_pool = get_connection_pool()
+    conn = None
+    cursor = None
+
     try:
+        conn = conn_pool.getconn()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         yield cursor
         conn.commit()
     except Exception:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         raise
     finally:
-        cursor.close()
-        conn.close()
+        if cursor:
+            cursor.close()
+        if conn:
+            conn_pool.putconn(conn)
 
 # === Cart Operations ===
 
@@ -103,37 +152,57 @@ def clear_cart(user_id: str):
 # === Search Cache Operations ===
 
 def get_cached_search(search_term: str) -> Optional[List]:
-    """Get cached search results (if not expired)"""
-    with get_db() as cursor:
-        cursor.execute("""
-            SELECT results_json, cached_at
-            FROM search_cache
-            WHERE LOWER(search_term) = LOWER(%s)
-            AND cached_at > NOW() - INTERVAL '7 days'
-        """, (search_term,))
-        
-        row = cursor.fetchone()
-        if row:
-            # Increment hit count
+    """
+    Get cached search results (if not expired)
+
+    Returns None on cache miss OR error (fail gracefully)
+    """
+    try:
+        with get_db() as cursor:
             cursor.execute("""
-                UPDATE search_cache
-                SET hit_count = hit_count + 1
+                SELECT results_json, cached_at
+                FROM search_cache
                 WHERE LOWER(search_term) = LOWER(%s)
+                AND cached_at > NOW() - INTERVAL '7 days'
             """, (search_term,))
-            
-            return row['results_json']  # JSONB type, returns as Python list
-        return None
+
+            row = cursor.fetchone()
+            if row:
+                # Increment hit count (best effort - don't fail if this fails)
+                try:
+                    cursor.execute("""
+                        UPDATE search_cache
+                        SET hit_count = hit_count + 1
+                        WHERE LOWER(search_term) = LOWER(%s)
+                    """, (search_term,))
+                except Exception as e:
+                    logger.warning(f"Failed to update cache hit count: {e}")
+
+                return row['results_json']  # JSONB type, returns as Python list
+            return None
+    except Exception as e:
+        logger.error(f"Search cache read failed for '{search_term}': {e}")
+        return None  # Cache miss on error - search will fetch fresh
 
 def cache_search_results(search_term: str, results: List[Dict]):
-    """Cache search results"""
-    with get_db() as cursor:
-        cursor.execute("""
-            INSERT INTO search_cache (search_term, results_json, cached_at, hit_count)
-            VALUES (LOWER(%s), %s, CURRENT_TIMESTAMP, 0)
-            ON CONFLICT (search_term) DO UPDATE SET
-                results_json = EXCLUDED.results_json,
-                cached_at = CURRENT_TIMESTAMP
-        """, (search_term, json.dumps(results)))
+    """
+    Cache search results
+
+    Best effort - doesn't raise exceptions if caching fails
+    """
+    try:
+        with get_db() as cursor:
+            cursor.execute("""
+                INSERT INTO search_cache (search_term, results_json, cached_at, hit_count)
+                VALUES (LOWER(%s), %s, CURRENT_TIMESTAMP, 0)
+                ON CONFLICT (search_term) DO UPDATE SET
+                    results_json = EXCLUDED.results_json,
+                    cached_at = CURRENT_TIMESTAMP
+            """, (search_term, json.dumps(results)))
+            logger.debug(f"Cached search results for '{search_term}' ({len(results)} items)")
+    except Exception as e:
+        logger.error(f"Search cache write failed for '{search_term}': {e}")
+        # Don't raise - caching is optional optimization
 
 # === Saved Lists Operations ===
 
@@ -166,17 +235,29 @@ def get_user_lists(user_id: str) -> List[Dict]:
         return lists
 
 def save_cart_as_list(user_id: str, list_name: str) -> int:
-    """Save current cart as a list"""
+    """
+    Save current cart as a list (atomic transaction)
+
+    Transaction safety:
+    - Both INSERT operations wrapped in single transaction
+    - If cart copy fails, list creation is rolled back
+    - get_db() context manager handles commit/rollback automatically
+    """
     with get_db() as cursor:
-        # Create list
+        # Step 1: Create list
         cursor.execute("""
             INSERT INTO saved_lists (user_id, name)
             VALUES (%s, %s)
             RETURNING id
         """, (user_id, list_name))
-        list_id = cursor.fetchone()['id']
-        
-        # Copy cart items to list
+        result = cursor.fetchone()
+
+        if not result:
+            raise ValueError("Failed to create saved list")
+
+        list_id = result['id']
+
+        # Step 2: Copy cart items to list (within same transaction)
         cursor.execute("""
             INSERT INTO saved_list_items
             (list_id, product_name, price, quantity, aisle, is_sold_by_weight)
@@ -184,24 +265,34 @@ def save_cart_as_list(user_id: str, list_name: str) -> int:
             FROM shopping_carts
             WHERE user_id = %s
         """, (list_id, user_id))
-        
+
+        # Both operations commit together (or rollback together on error)
         return list_id
 
 def load_list_to_cart(user_id: str, list_id: int):
-    """Load a saved list into cart"""
+    """
+    Load a saved list into cart (atomic transaction)
+
+    Transaction safety:
+    - Verification, cart clear, and item load in single transaction
+    - If any step fails, entire operation is rolled back
+    - User's cart remains unchanged on error
+    """
     with get_db() as cursor:
-        # Verify list belongs to user
+        # Step 1: Verify list belongs to user
         cursor.execute("""
             SELECT id FROM saved_lists WHERE id = %s AND user_id = %s
         """, (list_id, user_id))
-        
+
         if not cursor.fetchone():
-            raise ValueError("List not found")
-        
-        # Clear current cart
-        clear_cart(user_id)
-        
-        # Load list items into cart
+            raise ValueError("List not found or access denied")
+
+        # Step 2: Clear current cart (within transaction)
+        cursor.execute("""
+            DELETE FROM shopping_carts WHERE user_id = %s
+        """, (user_id,))
+
+        # Step 3: Load list items into cart (within same transaction)
         cursor.execute("""
             INSERT INTO shopping_carts
             (user_id, product_name, price, quantity, aisle, search_term, is_sold_by_weight)
@@ -209,6 +300,8 @@ def load_list_to_cart(user_id: str, list_id: int):
             FROM saved_list_items
             WHERE list_id = %s
         """, (user_id, list_id))
+
+        # All 3 operations commit together (or rollback together on error)
 
 # === Frequent Items ===
 
@@ -291,17 +384,29 @@ def create_recipe(user_id: str, name: str, description: str = None) -> int:
         return cursor.fetchone()['id']
 
 def save_cart_as_recipe(user_id: str, name: str, description: str = None) -> int:
-    """Save current cart as a recipe"""
+    """
+    Save current cart as a recipe (atomic transaction)
+
+    Transaction safety:
+    - Recipe creation and item copy in single transaction
+    - If item copy fails, recipe creation is rolled back
+    - Prevents orphaned recipes without items
+    """
     with get_db() as cursor:
-        # Create recipe
+        # Step 1: Create recipe
         cursor.execute("""
             INSERT INTO recipes (user_id, name, description)
             VALUES (%s, %s, %s)
             RETURNING id
         """, (user_id, name, description))
-        recipe_id = cursor.fetchone()['id']
+        result = cursor.fetchone()
 
-        # Copy cart items to recipe
+        if not result:
+            raise ValueError("Failed to create recipe")
+
+        recipe_id = result['id']
+
+        # Step 2: Copy cart items to recipe (within same transaction)
         cursor.execute("""
             INSERT INTO recipe_items
             (recipe_id, product_name, price, quantity, aisle, image_url,
@@ -312,6 +417,7 @@ def save_cart_as_recipe(user_id: str, name: str, description: str = None) -> int
             WHERE user_id = %s
         """, (recipe_id, user_id))
 
+        # Both operations commit together (or rollback together on error)
         return recipe_id
 
 def add_item_to_recipe(recipe_id: int, item: dict):
@@ -376,6 +482,70 @@ def delete_recipe(user_id: str, recipe_id: int):
             DELETE FROM recipes
             WHERE id = %s AND user_id = %s
         """, (recipe_id, user_id))
+
+# === Anonymous User Cleanup ===
+
+def cleanup_stale_anonymous_users(days_old: int = 30) -> int:
+    """
+    Remove stale anonymous users and their data.
+
+    Removes anonymous users who:
+    - Have is_anonymous=TRUE
+    - Created more than `days_old` days ago
+    - Have no activity (empty cart, no saved lists, no recipes)
+
+    Args:
+        days_old: Age threshold in days (default 30)
+
+    Returns:
+        Number of users deleted
+    """
+    with get_db() as cursor:
+        # Find stale anonymous users with no activity
+        cursor.execute("""
+            SELECT u.id
+            FROM users u
+            WHERE u.is_anonymous = TRUE
+            AND u.created_at < NOW() - INTERVAL '%s days'
+            AND NOT EXISTS (
+                SELECT 1 FROM shopping_carts sc WHERE sc.user_id = u.id
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM saved_lists sl WHERE sl.user_id = u.id
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM recipes r WHERE r.user_id = u.id
+            )
+        """, (days_old,))
+
+        stale_users = cursor.fetchall()
+        user_ids = [user['id'] for user in stale_users]
+
+        if not user_ids:
+            return 0
+
+        # Delete stale anonymous users (cascades to related data)
+        placeholders = ','.join(['%s'] * len(user_ids))
+        cursor.execute(f"""
+            DELETE FROM users
+            WHERE id IN ({placeholders})
+        """, user_ids)
+
+        return len(user_ids)
+
+def get_anonymous_user_stats() -> Dict:
+    """Get statistics about anonymous users"""
+    with get_db() as cursor:
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_anonymous,
+                COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as active_7d,
+                COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as active_30d,
+                COUNT(CASE WHEN created_at < NOW() - INTERVAL '30 days' THEN 1 END) as stale_30d
+            FROM users
+            WHERE is_anonymous = TRUE
+        """)
+        return cursor.fetchone()
 
 def load_recipe_to_cart(user_id: str, recipe_id: int, item_ids: List[int] = None):
     """

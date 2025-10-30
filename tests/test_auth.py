@@ -24,11 +24,24 @@ def test_anonymous_user_can_access_cart():
 
 def test_anonymous_user_can_search():
     """Anonymous users should be able to search products"""
+    import time
+    # Brief delay to ensure rate limiter reset completes
+    time.sleep(0.2)
+
     response = client.post("/api/search", json={
         "search_term": "apple",
         "max_results": 5
     })
-    assert response.status_code == 200
+
+    # If rate limited, wait and retry (rate limiter should have reset)
+    if response.status_code == 429:
+        time.sleep(1)
+        response = client.post("/api/search", json={
+            "search_term": "apple",
+            "max_results": 5
+        })
+
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     assert "products" in response.json()
 
 

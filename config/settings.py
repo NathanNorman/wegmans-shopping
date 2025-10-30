@@ -34,6 +34,11 @@ class Settings:
     SCRAPER_HEADLESS = os.getenv("SCRAPER_HEADLESS", "true").lower() == "true"
     SEARCH_MAX_RESULTS = int(os.getenv("SEARCH_MAX_RESULTS", "10"))
 
+    # Algolia configuration (Wegmans product search)
+    ALGOLIA_APP_ID = os.getenv("ALGOLIA_APP_ID", "QGPPR19V8V")
+    ALGOLIA_API_KEY = os.getenv("ALGOLIA_API_KEY", "9a10b1401634e9a6e55161c3a60c200d")
+    ALGOLIA_STORE_NUMBER = int(os.getenv("ALGOLIA_STORE_NUMBER", "86"))  # Default: Raleigh, NC
+
     # Data paths
     DATA_DIR = BASE_DIR / "data"
     CACHE_DIR = DATA_DIR / "cache"
@@ -45,6 +50,13 @@ class Settings:
 
     # Cache settings
     SEARCH_CACHE_DAYS = int(os.getenv("SEARCH_CACHE_DAYS", "7"))
+
+    # Debug settings (production should always be False)
+    ENABLE_DEBUG_FILES = os.getenv("ENABLE_DEBUG_FILES", "false").lower() == "true"
+    DEBUG_DIR = BASE_DIR / "debug_output"
+
+    # Rate limiting (disable in tests to avoid interference)
+    ENABLE_RATE_LIMITING = os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true"
 
     def __init__(self):
         """Ensure data directories exist"""

@@ -5,18 +5,19 @@ Queries Wegmans' Algolia search index directly via HTTP.
 import requests
 import logging
 from typing import List, Dict, Optional
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 class AlgoliaDirectScraper:
     """Direct Algolia API scraper (no Playwright, instant results!)"""
-    
-    ALGOLIA_APP_ID = "QGPPR19V8V"
-    ALGOLIA_API_KEY = "9a10b1401634e9a6e55161c3a60c200d"  # Public search-only key
-    ALGOLIA_URL = "https://qgppr19v8v-dsn.algolia.net/1/indexes/*/queries"
-    
-    # Raleigh, NC store
-    STORE_NUMBER = 86
+
+    def __init__(self):
+        """Initialize scraper with configuration from settings"""
+        self.ALGOLIA_APP_ID = settings.ALGOLIA_APP_ID
+        self.ALGOLIA_API_KEY = settings.ALGOLIA_API_KEY
+        self.ALGOLIA_URL = "https://qgppr19v8v-dsn.algolia.net/1/indexes/*/queries"
+        self.STORE_NUMBER = settings.ALGOLIA_STORE_NUMBER
     
     def search_products(self, query: str, max_results: int = 10) -> List[Dict]:
         """

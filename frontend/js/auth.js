@@ -39,31 +39,56 @@ async function initSupabase() {
 
 /**
  * Pre-load auth state from localStorage (instant UI update)
- * Supabase stores session in localStorage with key format:
- * sb-{project-ref}-auth-token
+ *
+ * IMPORTANT: Uses Supabase SDK's getSession() instead of manual parsing.
+ * This is more robust and handles format changes automatically.
+ *
+ * Fallback: If SDK not loaded yet, try manual parsing (backwards compatible)
  */
 function preloadAuthState() {
-    // Try to find Supabase auth token in localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
-            try {
-                const cachedData = localStorage.getItem(key);
-                if (cachedData) {
+    try {
+        // Method 1: Use Supabase SDK if available (preferred)
+        if (window.supabase && supabase && typeof supabase.auth?.getSession === 'function') {
+            // SDK handles localStorage parsing internally
+            // This is just a sync check - full async check happens in initAuth()
+            console.log('✓ Supabase SDK available, will use getSession()');
+            return false; // Let initAuth() handle it properly
+        }
+
+        // Method 2: Manual parsing (fallback for instant display)
+        // Try to find Supabase auth token in localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                try {
+                    const cachedData = localStorage.getItem(key);
+                    if (!cachedData) continue;
+
                     const session = JSON.parse(cachedData);
-                    if (session && session.access_token && session.user) {
+
+                    // Validate session structure (defensive)
+                    if (!session || typeof session !== 'object') {
+                        console.warn('Invalid session format in localStorage');
+                        continue;
+                    }
+
+                    if (session.access_token && session.user && session.user.id) {
                         currentUser = session.user;
                         accessToken = session.access_token;
                         updateUIForAuthState(true);
                         console.log('⚡ Auth state pre-loaded from cache (instant!)');
                         return true;
                     }
+                } catch (e) {
+                    console.warn('Failed to parse localStorage auth data:', e.message);
+                    // Continue to next key
                 }
-            } catch (e) {
-                // Invalid cache, ignore
             }
         }
+    } catch (e) {
+        console.error('Error in preloadAuthState:', e);
     }
+
     return false;
 }
 
