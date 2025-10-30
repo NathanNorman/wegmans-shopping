@@ -318,7 +318,14 @@ async function fetchWithAuth(url, options = {}) {
         headers['Authorization'] = `Bearer ${accessToken}`;
         console.log('🔑 Sending authenticated request to:', url);
     } else {
-        console.log('👤 Sending anonymous request to:', url);
+        // For anonymous users, send the anonymous ID as a header
+        const anonymousId = localStorage.getItem('anonymous_user_id');
+        if (anonymousId) {
+            headers['X-Anonymous-User-ID'] = anonymousId;
+            console.log('👤 Sending anonymous request with ID:', anonymousId.substring(0, 8) + '...');
+        } else {
+            console.log('👤 Sending anonymous request (no ID)');
+        }
     }
 
     const response = await fetch(url, {

@@ -4,7 +4,7 @@ Authentication module using Supabase Auth
 This module provides JWT-based authentication via Supabase Auth.
 Supports both authenticated users and anonymous users for backward compatibility.
 """
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client, Client
 from typing import Optional
@@ -46,6 +46,7 @@ class AuthUser:
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> AuthUser:
     """
@@ -54,6 +55,7 @@ async def get_current_user(
 
     Args:
         credentials: Optional HTTP Bearer token
+        request: Optional request object for getting anonymous ID header
 
     Returns:
         AuthUser object (authenticated or anonymous)
@@ -63,8 +65,13 @@ async def get_current_user(
     """
     import time
 
-    # If no token, create anonymous user
+    # If no token, use anonymous user
     if not credentials:
+        # Check if client sent anonymous ID in header
+        if request:
+            anonymous_id = request.headers.get('X-Anonymous-User-ID')
+            if anonymous_id:
+                return await get_or_create_anonymous_user(anonymous_id)
         return await create_anonymous_user()
 
     token = credentials.credentials
@@ -133,6 +140,7 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> AuthUser:
     """
@@ -141,18 +149,79 @@ async def get_current_user_optional(
 
     Args:
         credentials: Optional HTTP Bearer token
+        request: Optional request object for getting anonymous ID header
 
     Returns:
         AuthUser object (authenticated or anonymous)
     """
     if not credentials:
+        # Check if client sent anonymous ID
+        if request:
+            anonymous_id = request.headers.get('X-Anonymous-User-ID')
+            if anonymous_id:
+                return await get_or_create_anonymous_user(anonymous_id)
         return await create_anonymous_user()
 
     try:
-        return await get_current_user(credentials)
+        return await get_current_user(credentials, request)
     except HTTPException:
         # Token invalid - fall back to anonymous
         logger.debug("Token invalid, falling back to anonymous user")
+        if request:
+            anonymous_id = request.headers.get('X-Anonymous-User-ID')
+            if anonymous_id:
+                return await get_or_create_anonymous_user(anonymous_id)
+        return await create_anonymous_user()
+
+
+async def get_or_create_anonymous_user(anonymous_id: str) -> AuthUser:
+    """
+    Get or create anonymous user with specific ID.
+    Used when client sends X-Anonymous-User-ID header.
+
+    Args:
+        anonymous_id: UUID string from client
+
+    Returns:
+        AuthUser object with is_anonymous=True
+    """
+    from src.database import get_db
+
+    try:
+        with get_db() as cursor:
+            # Check if anonymous user already exists
+            cursor.execute("""
+                SELECT id FROM users WHERE id = %s AND is_anonymous = TRUE
+            """, (anonymous_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                logger.debug(f"Using existing anonymous user: {anonymous_id[:8]}...")
+                return AuthUser(
+                    user_id=anonymous_id,
+                    email=None,
+                    is_anonymous=True
+                )
+
+            # Create new anonymous user with provided ID
+            cursor.execute("""
+                INSERT INTO users (id, email, is_anonymous, created_at)
+                VALUES (%s, NULL, TRUE, CURRENT_TIMESTAMP)
+                ON CONFLICT (id) DO NOTHING
+                RETURNING id
+            """, (anonymous_id,))
+            result = cursor.fetchone()
+
+            logger.debug(f"Created anonymous user with client ID: {anonymous_id[:8]}...")
+            return AuthUser(
+                user_id=anonymous_id,
+                email=None,
+                is_anonymous=True
+            )
+
+    except Exception as e:
+        logger.warning(f"Failed to get/create anonymous user: {e}")
+        # Fall back to creating new one
         return await create_anonymous_user()
 
 
@@ -160,6 +229,7 @@ async def create_anonymous_user() -> AuthUser:
     """
     Create temporary anonymous user (maintains backward compatibility).
     Anonymous users can browse and add to cart without registering.
+    Generates a new random UUID.
 
     Returns:
         AuthUser object with is_anonymous=True

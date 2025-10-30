@@ -183,49 +183,6 @@ async def get_todays_list(user: AuthUser = Depends(get_current_user_optional)):
         else:
             return {"exists": False}
 
-@router.post("/lists/tag")
-async def tag_todays_list(save_req: SaveListRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """
-    Tag today's auto-saved list with a custom name
-
-    Instead of creating duplicate list, adds custom_name tag to today's list.
-    """
-    user_id = user.id
-    custom_name = save_req.name
-
-    # Check cart isn't empty
-    cart = get_user_cart(user_id)
-    if not cart:
-        raise HTTPException(status_code=400, detail="Cart is empty")
-
-    with get_db() as cursor:
-        # Find today's auto-saved list
-        cursor.execute("""
-            SELECT id, custom_name FROM saved_lists
-            WHERE user_id = %s
-            AND is_auto_saved = TRUE
-            AND DATE(created_at) = CURRENT_DATE
-        """, (user_id,))
-
-        existing = cursor.fetchone()
-
-        if existing:
-            # Tag the existing list
-            cursor.execute("""
-                UPDATE saved_lists
-                SET custom_name = %s, last_updated = CURRENT_TIMESTAMP
-                WHERE id = %s
-            """, (custom_name, existing['id']))
-
-            return {
-                "success": True,
-                "list_id": existing['id'],
-                "message": f"Tagged today's list as '{custom_name}'",
-                "replaced_tag": existing['custom_name']
-            }
-        else:
-            # No list today - need to auto-save first
-            raise HTTPException(
-                status_code=400,
-                detail="No list exists for today. Add items to cart first."
-            )
+# REMOVED: /lists/tag endpoint
+# Custom lists now use /lists/save to create NEW lists (not tag existing)
+# This allows multiple custom lists per day

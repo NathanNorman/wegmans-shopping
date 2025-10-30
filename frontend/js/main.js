@@ -1582,9 +1582,14 @@ async function saveCustomListNow() {
         return;
     }
 
+    // Close modal immediately (optimistic UI)
+    document.getElementById('customListName').value = '';
+    closeModal('saveListModal');
+    showToast(`💾 Saving "${listName}"...`);
+
     try {
-        // Tag today's list with custom name
-        const response = await auth.fetchWithAuth('/api/lists/tag', {
+        // Create NEW custom list (not tagging - creates separate list)
+        const response = await auth.fetchWithAuth('/api/lists/save', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name: listName })
@@ -1593,18 +1598,14 @@ async function saveCustomListNow() {
         const data = await response.json();
 
         if (data.success) {
-            document.getElementById('customListName').value = '';
-            closeModal('saveListModal');
-            showToast(`✓ Tagged as "${listName}"!`);
-
-            // Update the auto-save indicator to show custom name
-            updateTodaysListIndicator();
+            showToast(`✓ Saved "${listName}"!`);
+            // Note: Cart remains for continued shopping
         } else {
-            showToast(data.message || 'Failed to save', true);
+            showToast('Failed to save list', true);
         }
     } catch (error) {
-        showToast('Failed to tag list', true);
-        console.error('Tag error:', error);
+        showToast('Failed to save list', true);
+        console.error('Save error:', error);
     }
 }
 

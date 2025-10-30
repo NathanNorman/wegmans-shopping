@@ -345,9 +345,10 @@
         <div class="quantity-modal-content">
             <h3>Save Custom List</h3>
             <p style="color: var(--text-secondary); margin-bottom: var(--space-4); font-size: var(--font-size-sm);">
-                Give this list a custom name (e.g., "Thanksgiving Dinner", "Weekly Groceries")
+                Save your current cart as a named list. You can save multiple lists per day!
+                <br><small style="color: #888;">Examples: "Thanksgiving Dinner", "Weekly Groceries", "Party Supplies"</small>
             </p>
-            <input type="text" id="customListName" placeholder="List name..." style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-medium); border-radius: var(--radius-md); margin-bottom: var(--space-4); font-size: var(--font-size-base);">
+            <input type="text" id="customListName" placeholder="Enter list name (e.g., Thanksgiving)..." style="width: 100%; padding: var(--space-3); border: 1px solid var(--border-medium); border-radius: var(--radius-md); margin-bottom: var(--space-4); font-size: var(--font-size-base);">
             <div class="quantity-modal-actions">
                 <button onclick="saveCustomListNow()" class="btn-confirm">Save List</button>
                 <button onclick="closeModal('saveListModal')" class="btn-cancel">Cancel</button>
