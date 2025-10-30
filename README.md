@@ -7,7 +7,8 @@ Interactive web app for building Wegmans shopping lists with real-time product s
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-blue.svg)](https://www.postgresql.org/)
-[![Tests](https://img.shields.io/badge/tests-30%2B%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-193%20passing-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](tests/)
 
 ---
 
@@ -23,9 +24,9 @@ Interactive web app for building Wegmans shopping lists with real-time product s
 - 🍳 **Recipe support** - Save recipes and add ingredients to cart
 
 ### Technical Features
-- ⚡ **High performance** - Connection pooling, batch APIs, search caching
-- 🧪 **Tested** - 30+ automated tests with pytest
-- 🔒 **Secure** - SQL injection protection audited, JWT authentication
+- ⚡ **High performance** - Connection pooling, batch APIs, search caching, rate limiting
+- 🧪 **Tested** - 193 automated tests with 94% code coverage
+- 🔒 **Secure** - SQL injection protection audited, JWT authentication, rate limiting
 - 📊 **Maintainable** - Clean architecture, comprehensive documentation
 - 🚀 **Production-ready** - Migration tracking, error handling, monitoring
 
@@ -297,10 +298,12 @@ psql $DATABASE_URL -c "\d users"
 
 ### Test Suite
 
-- **30+ automated tests** covering database operations and API endpoints
+- **193 automated tests** covering all modules and endpoints
+- **94% code coverage** across src/ directory
 - **Test fixtures** for database, users, and test data
 - **Transaction rollback** per test (isolated, no pollution)
 - **Coverage reporting** with pytest-cov
+- **Test categories**: Unit, integration, API, security, auth
 
 ### Running Tests
 
@@ -543,7 +546,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 **Latest Changes:**
 - ✅ All 14 tech debt issues resolved
-- ✅ 30+ automated tests added
+- ✅ 193 automated tests added (94% coverage)
 - ✅ Performance improved 50-80%
 - ✅ Deployment size reduced 60%
 - ✅ Security audited and documented
@@ -551,6 +554,8 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 - ✅ Anonymous user cleanup
 - ✅ Connection pooling
 - ✅ Batch image API
+- ✅ Rate limiting (60 requests/minute)
+- ✅ Production bugs fixed
 
 ---
 

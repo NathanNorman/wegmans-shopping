@@ -139,6 +139,45 @@ EOF
 - Hidden div + @media print is most reliable cross-browser approach
 - Test with actual Print Preview on mobile device, not desktop DevTools
 
+## Testing
+
+**Test Suite:** 193 tests with 94% code coverage
+
+**Run tests:**
+```bash
+pytest --cov=src --cov-report=html
+```
+
+**Test files:**
+- `tests/test_api.py` - API endpoints (lists, recipes, cart, search, images)
+- `tests/test_database.py` - Database operations
+- `tests/test_auth.py` - Auth integration tests
+- `tests/test_auth_module.py` - Auth module unit tests
+- `tests/test_api_auth.py` - Auth API endpoints
+
+**Important:** Tests run with `ENABLE_RATE_LIMITING=false` to avoid test interference.
+
+## Database Rebuild Warning
+
+**CRITICAL:** When rebuilding the database (DROP TABLE users CASCADE), remember:
+
+- `public.users` (our app) gets dropped ✅
+- `auth.users` (Supabase Auth) is NOT affected ❌
+- Users can still authenticate (JWT from auth.users)
+- But operations fail (foreign keys to missing public.users records)
+
+**Fix after rebuild:**
+```python
+# Re-insert authenticated users into public.users
+INSERT INTO users (id, email, is_anonymous, created_at)
+SELECT id, email, FALSE, created_at
+FROM auth.users
+WHERE email IS NOT NULL
+ON CONFLICT (id) DO NOTHING;
+```
+
+Or manually insert specific users as needed.
+
 ## Render CLI Usage
 
 **Service ID**: `srv-d3vt00h5pdvs7390bh10`
