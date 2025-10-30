@@ -1405,6 +1405,25 @@ async function printShoppingList() {
         // Set print content
         printDiv.innerHTML = html;
 
+        // Setup afterprint handler to fix mobile zoom
+        const afterPrintHandler = () => {
+            // Fix mobile zoom issue after printing
+            if (window.innerWidth <= 767) {
+                // Force viewport reset
+                const viewport = document.querySelector('meta[name=viewport]');
+                if (viewport) {
+                    const content = viewport.getAttribute('content');
+                    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+                    // Reset back to allow zoom after a moment
+                    setTimeout(() => {
+                        viewport.setAttribute('content', content);
+                    }, 100);
+                }
+            }
+            window.removeEventListener('afterprint', afterPrintHandler);
+        };
+        window.addEventListener('afterprint', afterPrintHandler, { once: true });
+
         // Print immediately
         window.print();
 
