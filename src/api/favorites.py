@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Dict
 from src.auth import get_current_user, AuthUser
-from src.database import add_favorite, remove_favorite, get_favorites, check_if_favorited
+from src.database import add_favorite, remove_favorite, get_favorites, check_if_favorited, get_user_store
 import logging
 
 router = APIRouter()
@@ -21,12 +21,13 @@ async def add_favorite_item(
     user: AuthUser = Depends(get_current_user)
 ):
     """
-    Manually add item to favorites
+    Manually add item to favorites for user's default store
 
     Sets is_manual=TRUE and purchase_count=999 to ensure it appears in frequent items
     """
     try:
-        logger.info(f"Adding favorite '{request.product_name}' for user {user.id}")
+        store_number = get_user_store(str(user.id))
+        logger.info(f"Adding favorite '{request.product_name}' for user {user.id} at store {store_number}")
 
         add_favorite(
             user_id=str(user.id),
@@ -34,7 +35,8 @@ async def add_favorite_item(
             price=request.price,
             aisle=request.aisle,
             image_url=request.image_url,
-            is_sold_by_weight=request.is_sold_by_weight
+            is_sold_by_weight=request.is_sold_by_weight,
+            store_number=store_number
         )
 
         return {
@@ -51,14 +53,15 @@ async def remove_favorite_item(
     user: AuthUser = Depends(get_current_user)
 ):
     """
-    Remove item from favorites
+    Remove item from favorites for user's default store
 
     Sets is_manual=FALSE. If item is not auto-frequent (count < 2), deletes it entirely.
     """
     try:
-        logger.info(f"Removing favorite '{product_name}' for user {user.id}")
+        store_number = get_user_store(str(user.id))
+        logger.info(f"Removing favorite '{product_name}' for user {user.id} at store {store_number}")
 
-        remove_favorite(str(user.id), product_name)
+        remove_favorite(str(user.id), product_name, store_number)
 
         return {
             "success": True,
@@ -71,12 +74,13 @@ async def remove_favorite_item(
 @router.get("/favorites")
 async def get_user_favorites(user: AuthUser = Depends(get_current_user)):
     """
-    Get all manually favorited items for the current user
+    Get all manually favorited items for the current user at their default store
 
     Returns items where is_manual=TRUE, sorted by most recently added
     """
     try:
-        favorites = get_favorites(str(user.id))
+        store_number = get_user_store(str(user.id))
+        favorites = get_favorites(str(user.id), store_number)
         return {"favorites": favorites}
     except Exception as e:
         logger.error(f"Failed to get favorites: {e}")
@@ -88,12 +92,13 @@ async def check_favorite_status(
     user: AuthUser = Depends(get_current_user)
 ):
     """
-    Check if a specific product is favorited by the user
+    Check if a specific product is favorited by the user at their default store
 
     Used by frontend to show correct star icon state
     """
     try:
-        is_favorited = check_if_favorited(str(user.id), product_name)
+        store_number = get_user_store(str(user.id))
+        is_favorited = check_if_favorited(str(user.id), product_name, store_number)
         return {
             "is_favorited": is_favorited,
             "product_name": product_name

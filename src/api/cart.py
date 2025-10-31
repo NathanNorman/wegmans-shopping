@@ -7,7 +7,8 @@ from src.database import (
     update_cart_quantity,
     remove_from_cart,
     clear_cart,
-    update_frequent_items
+    update_frequent_items,
+    get_user_store
 )
 from src.auth import get_current_user_optional, AuthUser
 
@@ -29,13 +30,16 @@ class UpdateQuantityRequest(BaseModel):
 
 @router.get("/cart")
 async def get_cart(user: AuthUser = Depends(get_current_user_optional)):
-    """Get user's shopping cart"""
-    cart_items = get_user_cart(user.id)
+    """Get user's shopping cart for their default store"""
+    store_number = get_user_store(str(user.id))
+    cart_items = get_user_cart(str(user.id), store_number)
     return {"cart": cart_items}
 
 @router.post("/cart/add")
 async def add_item(item: AddToCartRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Add item to cart"""
+    """Add item to cart for user's default store"""
+    store_number = get_user_store(str(user.id))
+
     product = {
         'name': item.name,
         'price': item.price,
@@ -46,45 +50,50 @@ async def add_item(item: AddToCartRequest, user: AuthUser = Depends(get_current_
         'unit_price': item.unit_price
     }
 
-    add_to_cart(user.id, product, item.quantity)
-    cart_items = get_user_cart(user.id)
+    add_to_cart(str(user.id), product, item.quantity, store_number)
+    cart_items = get_user_cart(str(user.id), store_number)
 
     return {"success": True, "cart": cart_items}
 
 @router.put("/cart/quantity")
 async def update_quantity(update: UpdateQuantityRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Update item quantity in cart"""
-    update_cart_quantity(user.id, update.cart_item_id, update.quantity)
-    cart_items = get_user_cart(user.id)
+    """Update item quantity in cart for user's default store"""
+    store_number = get_user_store(str(user.id))
+    update_cart_quantity(str(user.id), update.cart_item_id, update.quantity, store_number)
+    cart_items = get_user_cart(str(user.id), store_number)
 
     return {"success": True, "cart": cart_items}
 
 @router.delete("/cart/{cart_item_id}")
 async def remove_item(cart_item_id: int, user: AuthUser = Depends(get_current_user_optional)):
-    """Remove item from cart"""
-    remove_from_cart(user.id, cart_item_id)
-    cart_items = get_user_cart(user.id)
+    """Remove item from cart for user's default store"""
+    store_number = get_user_store(str(user.id))
+    remove_from_cart(str(user.id), cart_item_id, store_number)
+    cart_items = get_user_cart(str(user.id), store_number)
 
     return {"success": True, "cart": cart_items}
 
 @router.delete("/cart")
 async def clear_user_cart(user: AuthUser = Depends(get_current_user_optional)):
-    """Clear entire cart"""
-    clear_cart(user.id)
+    """Clear entire cart for user's default store"""
+    store_number = get_user_store(str(user.id))
+    clear_cart(str(user.id), store_number)
 
     return {"success": True, "cart": []}
 
 @router.post("/cart/complete")
 async def complete_shopping(user: AuthUser = Depends(get_current_user_optional)):
-    """Mark shopping complete and update frequent items"""
-    update_frequent_items(user.id)
-    clear_cart(user.id)
+    """Mark shopping complete and update frequent items for user's default store"""
+    store_number = get_user_store(str(user.id))
+    update_frequent_items(str(user.id), store_number)
+    clear_cart(str(user.id), store_number)
 
     return {"success": True, "message": "Shopping completed!"}
 
 @router.post("/cart/update-frequent")
 async def update_frequent(user: AuthUser = Depends(get_current_user_optional)):
-    """Update frequent items from cart WITHOUT clearing cart"""
-    update_frequent_items(user.id)
+    """Update frequent items from cart WITHOUT clearing cart for user's default store"""
+    store_number = get_user_store(str(user.id))
+    update_frequent_items(str(user.id), store_number)
 
     return {"success": True, "message": "Frequent items updated!"}

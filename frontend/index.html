@@ -64,16 +64,21 @@
             <div class="header-content">
                 <h1>Shopping List Builder</h1>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <select id="storeSelector" onchange="changeStore()" style="padding: 6px 12px; border: 1px solid var(--border-medium); border-radius: var(--radius-md); background: white; font-size: var(--font-size-sm); cursor: pointer;">
-                        <option value="86">Raleigh, NC</option>
-                        <option value="44">Charlottesville, VA</option>
-                        <option value="83">Virginia Beach, VA</option>
-                        <option value="47">Fredericksburg, VA</option>
-                        <option value="72">Richmond, VA</option>
-                        <option value="23">Syracuse, NY</option>
-                        <option value="52">Pittsford, NY</option>
-                        <option value="73">Fairfax, VA</option>
-                    </select>
+                    <div class="store-selector-wrapper">
+                        <select id="stateSelector" onchange="updateStoreOptions()" class="store-selector">
+                            <option value="">Select State</option>
+                            <option value="NY">New York</option>
+                            <option value="PA">Pennsylvania</option>
+                            <option value="NJ">New Jersey</option>
+                            <option value="VA">Virginia</option>
+                            <option value="MD">Maryland</option>
+                            <option value="NC">North Carolina</option>
+                            <option value="MA">Massachusetts</option>
+                        </select>
+                        <select id="storeSelector" onchange="changeStore()" class="store-selector" disabled>
+                            <option value="">Select Store</option>
+                        </select>
+                    </div>
                     <p class="subtitle" style="margin: 0;">Build your list one item at a time</p>
                 </div>
             </div>
@@ -595,6 +600,20 @@
             <p>
                 <a href="#" onclick="showLoginModal(); return false;">Back to login</a>
             </p>
+        </div>
+    </div>
+
+    <!-- Store Switch Warning Modal -->
+    <div class="quantity-modal" id="switchStoreModal">
+        <div class="quantity-modal-content">
+            <h3>Switch Stores?</h3>
+            <div id="switchStoreMessage" style="margin-bottom: var(--space-4); color: var(--text-secondary); line-height: 1.5;">
+                <!-- Content injected by JavaScript -->
+            </div>
+            <div class="quantity-modal-actions">
+                <button onclick="confirmStoreSwitch()" class="btn-confirm">Yes, Switch</button>
+                <button onclick="cancelStoreSwitch()" class="btn-cancel">Cancel</button>
+            </div>
         </div>
     </div>
 

@@ -43,10 +43,10 @@ async def search_products(request: Request, search: SearchRequest, background_ta
     Returns products from cache if available, otherwise queries Algolia directly
     """
 
-    # Check cache first (pagination from cache)
-    cached = get_cached_search(search.search_term)
+    # Check cache first FOR THIS STORE (pagination from cache)
+    cached = get_cached_search(search.search_term, search.store_number)
     if cached:
-        logger.info(f"✅ Cache hit for '{search.search_term}' (offset: {search.offset})")
+        logger.info(f"✅ Cache hit for '{search.search_term}' at store {search.store_number} (offset: {search.offset})")
         # Return paginated slice from cache
         start = search.offset
         end = start + search.max_results
@@ -57,7 +57,7 @@ async def search_products(request: Request, search: SearchRequest, background_ta
         }
 
     # Not in cache, query Algolia directly (NO BROWSER!)
-    logger.info(f"⚡ Cache miss - Querying Algolia API for '{search.search_term}'")
+    logger.info(f"⚡ Cache miss - Querying Algolia API for '{search.search_term}' at store {search.store_number}")
 
     try:
         # Always fetch more results to populate cache (100 products)
@@ -69,8 +69,8 @@ async def search_products(request: Request, search: SearchRequest, background_ta
 
         logger.info(f"✅ Search complete - Found {len(products)} products in ~1 second!")
 
-        # Cache results in background (all 100 products)
-        background_tasks.add_task(cache_search_results, search.search_term, products)
+        # Cache results in background FOR THIS STORE (all 100 products)
+        background_tasks.add_task(cache_search_results, search.search_term, products, search.store_number)
 
         # Return requested page
         start = search.offset
@@ -90,7 +90,8 @@ async def search_products(request: Request, search: SearchRequest, background_ta
 
 @router.get("/frequent")
 async def get_frequent(user: AuthUser = Depends(get_current_user_optional)):
-    """Get frequently purchased items (user-specific)"""
-    from src.database import get_frequent_items
-    items = get_frequent_items(user.id, limit=20)
+    """Get frequently purchased items for user's default store (user-specific)"""
+    from src.database import get_frequent_items, get_user_store
+    store_number = get_user_store(str(user.id))
+    items = get_frequent_items(str(user.id), store_number, limit=20)
     return {"items": items}

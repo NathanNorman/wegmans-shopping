@@ -11,7 +11,8 @@ from src.database import (
     update_recipe,
     delete_recipe,
     load_recipe_to_cart,
-    get_user_cart
+    get_user_cart,
+    get_user_store
 )
 from src.auth import get_current_user_optional, AuthUser
 
@@ -47,39 +48,43 @@ class LoadRecipeRequest(BaseModel):
 
 @router.get("/recipes")
 async def get_recipes(user: AuthUser = Depends(get_current_user_optional)):
-    """Get all recipes for user"""
-    user_id = user.id
-    recipes = get_user_recipes(user_id)
+    """Get all recipes for user at their default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
+    recipes = get_user_recipes(user_id, store_number)
     return {"recipes": recipes}
 
 @router.post("/recipes/create")
 async def create_new_recipe(recipe_req: CreateRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Create a new empty recipe"""
-    user_id = user.id
-    recipe_id = create_recipe(user_id, recipe_req.name, recipe_req.description)
+    """Create a new empty recipe for user's default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
+    recipe_id = create_recipe(user_id, recipe_req.name, store_number, recipe_req.description)
     return {"success": True, "recipe_id": recipe_id}
 
 @router.post("/recipes/save-cart")
 async def save_cart_recipe(recipe_req: SaveCartAsRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Save current cart as a recipe"""
-    user_id = user.id
+    """Save current cart as a recipe for user's default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
 
     # Check cart isn't empty
-    cart = get_user_cart(user_id)
+    cart = get_user_cart(user_id, store_number)
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    recipe_id = save_cart_as_recipe(user_id, recipe_req.name, recipe_req.description)
+    recipe_id = save_cart_as_recipe(user_id, recipe_req.name, store_number, recipe_req.description)
 
     return {"success": True, "recipe_id": recipe_id}
 
 @router.post("/recipes/{recipe_id}/items")
 async def add_item(recipe_id: int, item_req: AddItemToRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Add an item to a recipe"""
-    user_id = user.id
+    """Add an item to a recipe for user's default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
 
-    # Verify recipe belongs to user
-    recipes = get_user_recipes(user_id)
+    # Verify recipe belongs to user at this store
+    recipes = get_user_recipes(user_id, store_number)
     if not any(r['id'] == recipe_id for r in recipes):
         raise HTTPException(status_code=404, detail="Recipe not found")
 
@@ -110,11 +115,12 @@ async def remove_item(item_id: int, user: AuthUser = Depends(get_current_user_op
 
 @router.put("/recipes/{recipe_id}")
 async def update_recipe_metadata(recipe_id: int, update_req: UpdateRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
-    """Update recipe name or description"""
-    user_id = user.id
+    """Update recipe name or description for user's default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
 
-    # Verify recipe belongs to user
-    recipes = get_user_recipes(user_id)
+    # Verify recipe belongs to user at this store
+    recipes = get_user_recipes(user_id, store_number)
     if not any(r['id'] == recipe_id for r in recipes):
         raise HTTPException(status_code=404, detail="Recipe not found")
 
@@ -123,24 +129,26 @@ async def update_recipe_metadata(recipe_id: int, update_req: UpdateRecipeRequest
 
 @router.delete("/recipes/{recipe_id}")
 async def delete_recipe_endpoint(recipe_id: int, user: AuthUser = Depends(get_current_user_optional)):
-    """Delete a recipe"""
-    user_id = user.id
-    delete_recipe(user_id, recipe_id)
+    """Delete a recipe from user's default store"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
+    delete_recipe(user_id, recipe_id, store_number)
     return {"success": True}
 
 @router.post("/recipes/{recipe_id}/add-to-cart")
 async def load_recipe(recipe_id: int, load_req: LoadRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
     """
-    Load recipe items into cart
+    Load recipe items into cart for user's default store
 
     If item_ids is provided, only those items are added.
     Otherwise, all items are added.
     """
-    user_id = user.id
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
 
     try:
-        load_recipe_to_cart(user_id, recipe_id, load_req.item_ids)
-        cart = get_user_cart(user_id)
+        load_recipe_to_cart(user_id, recipe_id, store_number, load_req.item_ids)
+        cart = get_user_cart(user_id, store_number)
         return {"success": True, "cart": cart}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

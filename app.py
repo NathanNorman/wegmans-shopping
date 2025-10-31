@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 import uvicorn
 import logging
 
-from src.api import search, cart, lists, recipes, health, auth, images, favorites
+from src.api import search, cart, lists, recipes, health, auth, images, favorites, store
 from config.settings import settings
 from contextlib import asynccontextmanager
 
@@ -72,6 +72,7 @@ app.include_router(lists.router, prefix="/api", tags=["lists"])
 app.include_router(recipes.router, prefix="/api", tags=["recipes"])
 app.include_router(images.router, prefix="/api", tags=["images"])
 app.include_router(favorites.router, prefix="/api", tags=["favorites"])
+app.include_router(store.router, prefix="/api", tags=["store"])
 
 # Serve static files (CSS/JS)
 app.mount("/css", StaticFiles(directory="frontend/css"), name="css")

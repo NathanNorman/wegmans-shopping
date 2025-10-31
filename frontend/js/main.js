@@ -12,6 +12,124 @@ const RESULTS_PER_PAGE = 20;
 // Store selection
 let selectedStore = localStorage.getItem('selectedStore') || '86'; // Default: Raleigh
 
+// Verified Wegmans stores (only stores with Algolia product data)
+// Total: 88 stores across 7 states
+// Note: Verified against Algolia API - all stores guaranteed to have product search
+const WEGMANS_STORES = {
+    'NY': [
+        {number: 1, name: 'Buffalo - Amherst St'},
+        {number: 4, name: 'Rochester - East Ave'},
+        {number: 11, name: 'Syracuse - James St'},
+        {number: 13, name: 'Rochester - Lyell Ave'},
+        {number: 14, name: 'Buffalo - Dick Road'},
+        {number: 20, name: 'Rochester - Calkins Road'},
+        {number: 24, name: 'Rochester - Marketplace'},
+        {number: 26, name: 'Rochester - Hudson Ave'},
+        {number: 34, name: 'Canandaigua'},
+        {number: 38, name: 'Syracuse - Clay'},
+        {number: 41, name: 'Corning'},
+        {number: 46, name: 'Auburn'},
+        {number: 48, name: 'Olean'},
+        {number: 50, name: 'Binghamton'},
+        {number: 54, name: 'Rochester - Perinton'},
+        {number: 56, name: 'Rochester - Gates'},
+        {number: 57, name: 'Rochester - Penfield'},
+        {number: 62, name: 'Saratoga Springs'},
+        {number: 68, name: 'Rochester - College Town'},
+        {number: 76, name: 'Elmira'},
+        {number: 77, name: 'Webster'},
+        {number: 78, name: 'Oswego'},
+        {number: 80, name: 'Batavia'},
+        {number: 84, name: 'Amherst'},
+        {number: 92, name: 'Geneva'},
+        {number: 93, name: 'Brockport'},
+        {number: 95, name: 'Cicero'},
+        {number: 97, name: 'Rome'},
+        {number: 104, name: 'Victor'},
+        {number: 105, name: 'New Hartford'},
+        {number: 108, name: 'Geneseo'},
+        {number: 111, name: 'Henrietta'},
+        {number: 115, name: 'Brooklyn'}
+    ],
+    'PA': [
+        {number: 3, name: 'Wilkes-Barre'},
+        {number: 16, name: 'State College'},
+        {number: 22, name: 'Scranton'},
+        {number: 30, name: 'Dickson City'},
+        {number: 59, name: 'Easton'},
+        {number: 60, name: 'Bethlehem'},
+        {number: 66, name: 'Allentown'},
+        {number: 67, name: 'Langhorne'},
+        {number: 75, name: 'Downingtown'},
+        {number: 79, name: 'Warrington'},
+        {number: 82, name: 'East Stroudsburg'},
+        {number: 87, name: 'Hanover Township'},
+        {number: 88, name: 'State College - Colonnade'},
+        {number: 89, name: 'Hazleton'},
+        {number: 94, name: 'Boalsburg'},
+        {number: 96, name: 'Mechanicsburg'},
+        {number: 98, name: 'Collegeville'}
+    ],
+    'NJ': [
+        {number: 7, name: 'Bridgewater'},
+        {number: 8, name: 'Woodbridge'},
+        {number: 9, name: 'Princeton'},
+        {number: 18, name: 'Manalapan'},
+        {number: 19, name: 'Cherry Hill'},
+        {number: 31, name: 'Mt. Laurel'},
+        {number: 37, name: 'Ocean'},
+        {number: 40, name: 'Hanover'},
+        {number: 51, name: 'Marlton'},
+        {number: 55, name: 'Montgomery'},
+        {number: 64, name: 'Manalapan - 2'},
+        {number: 71, name: 'Montvale'}
+    ],
+    'VA': [
+        {number: 44, name: 'Charlottesville - Hydraulic'},
+        {number: 47, name: 'Fredericksburg'},
+        {number: 49, name: 'Sterling'},
+        {number: 58, name: 'Leesburg'},
+        {number: 63, name: 'Short Pump'},
+        {number: 65, name: 'Woodbridge'},
+        {number: 69, name: 'Fairfax'},
+        {number: 70, name: 'Midlothian'},
+        {number: 73, name: 'Fair Lakes'},
+        {number: 83, name: 'Virginia Beach'},
+        {number: 119, name: 'Reston'},
+        {number: 120, name: 'Richmond - Willow Lawn'}
+    ],
+    'MD': [
+        {number: 53, name: 'Hunt Valley'},
+        {number: 74, name: 'Owings Mills'},
+        {number: 124, name: 'Gambrills'}
+    ],
+    'NC': [
+        {number: 86, name: 'Raleigh'},
+        {number: 90, name: 'Cary'},
+        {number: 91, name: 'Chapel Hill'},
+        {number: 125, name: 'Wake Forest'},
+        {number: 126, name: 'Holly Springs'}
+    ],
+    'MA': [
+        {number: 35, name: 'Northborough'},
+        {number: 36, name: 'Chestnut Hill'},
+        {number: 127, name: 'Medford'},
+        {number: 128, name: 'Burlington'},
+        {number: 129, name: 'Westwood'},
+        {number: 130, name: 'Northborough - 2'}
+    ]
+};
+
+const STATE_NAMES = {
+    'NY': 'New York',
+    'PA': 'Pennsylvania',
+    'NJ': 'New Jersey',
+    'VA': 'Virginia',
+    'MD': 'Maryland',
+    'NC': 'North Carolina',
+    'MA': 'Massachusetts'
+};
+
 console.log('🚀 Wegmans Shopping List Builder initialized');
 console.log('📝 Console logging enabled for debugging');
 
@@ -112,40 +230,203 @@ async function loadCart() {
 // loadFrequentItems();
 
 // Export for auth.js to call after initialization
-window.appReady = function() {
+window.appReady = async function() {
     console.log('🎬 App ready - Auth initialized, loading list...');
+
+    // Load user's default store from backend
+    await loadUserStore();
+
+    // Initialize store selector UI
     initializeStoreSelector();
+
     loadCart();
     loadFrequentItems();
     loadUserFavorites();
 };
 
-// ====== Store Selection Functions ======
+async function loadUserStore() {
+    try {
+        const response = await auth.fetchWithAuth('/api/store');
+        const data = await response.json();
 
-function initializeStoreSelector() {
-    const selector = document.getElementById('storeSelector');
-    if (selector) {
-        selector.value = selectedStore;
-        console.log(`🏪 Store initialized: ${selector.options[selector.selectedIndex].text}`);
+        selectedStore = data.store_number.toString();
+        localStorage.setItem('selectedStore', selectedStore);
+
+        console.log(`🏪 User default store: ${selectedStore}`);
+    } catch (error) {
+        console.error('Failed to load user store:', error);
+        selectedStore = '86'; // Fallback to Raleigh
     }
 }
 
+// ====== Store Selection Functions ======
+
+function initializeStoreSelector() {
+    // Find which state the current store is in
+    let foundState = null;
+    for (const [state, stores] of Object.entries(WEGMANS_STORES)) {
+        if (stores.some(s => s.number.toString() === selectedStore)) {
+            foundState = state;
+            break;
+        }
+    }
+
+    if (foundState) {
+        // Set state selector
+        const stateSelector = document.getElementById('stateSelector');
+        stateSelector.value = foundState;
+
+        // Populate store options for this state
+        updateStoreOptions();
+
+        // Set store selector
+        const storeSelector = document.getElementById('storeSelector');
+        storeSelector.value = selectedStore;
+
+        const storeName = storeSelector.options[storeSelector.selectedIndex]?.text || 'Unknown';
+        console.log(`🏪 Store initialized: ${storeName} (${selectedStore})`);
+    } else {
+        console.warn(`⚠️ Store ${selectedStore} not found in store list, defaulting to Raleigh`);
+        selectedStore = '86';
+        initializeStoreSelector(); // Retry with default
+    }
+}
+
+function updateStoreOptions() {
+    const stateSelector = document.getElementById('stateSelector');
+    const storeSelector = document.getElementById('storeSelector');
+    const state = stateSelector.value;
+
+    if (!state) {
+        storeSelector.disabled = true;
+        storeSelector.innerHTML = '<option value="">Select Store</option>';
+        return;
+    }
+
+    // Populate stores for selected state
+    const stores = WEGMANS_STORES[state] || [];
+    storeSelector.innerHTML = '<option value="">Select Store</option>';
+
+    stores.forEach(store => {
+        const option = document.createElement('option');
+        option.value = store.number;
+        option.textContent = store.name;
+        storeSelector.appendChild(option);
+    });
+
+    storeSelector.disabled = false;
+    console.log(`📍 Loaded ${stores.length} stores for ${STATE_NAMES[state]}`);
+}
+
+// Store for pending store change
+let pendingStoreChange = null;
+
 function changeStore() {
-    const selector = document.getElementById('storeSelector');
-    selectedStore = selector.value;
-    localStorage.setItem('selectedStore', selectedStore);
+    const storeSelector = document.getElementById('storeSelector');
+    const newStore = storeSelector.value;
 
-    const storeName = selector.options[selector.selectedIndex].text;
-    console.log(`🏪 Store changed to: ${storeName} (${selectedStore})`);
+    if (!newStore || newStore === selectedStore) {
+        return; // No change
+    }
 
-    showToast(`Store changed to ${storeName}`);
+    // Check if user has data in current cart/favorites
+    const hasData = cart.length > 0 || userFavorites.size > 0;
 
-    // Clear search results since they're for a different store
-    document.getElementById('resultsGrid').innerHTML = '';
-    document.getElementById('resultsSection').style.display = 'none';
-    document.getElementById('emptyResults').style.display = 'block';
-    currentSearchTerm = '';
-    currentSearchResults = [];
+    if (hasData) {
+        // Show warning modal
+        pendingStoreChange = newStore;
+        const storeName = storeSelector.options[storeSelector.selectedIndex].text;
+        const stateSelector = document.getElementById('stateSelector');
+        const stateName = STATE_NAMES[stateSelector.value] || 'different';
+
+        document.getElementById('switchStoreMessage').innerHTML = `
+            <p style="font-size: var(--font-size-base); margin-bottom: var(--space-3);">
+                You're about to switch to <strong>${storeName}</strong> in ${stateName}.
+            </p>
+            <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-3);">
+                You currently have <strong>${cart.length} item(s)</strong> in your list
+                ${userFavorites.size > 0 ? `and <strong>${userFavorites.size} favorite(s)</strong>` : ''}.
+            </p>
+            <p style="font-size: var(--font-size-sm); color: var(--warning-orange); font-weight: var(--font-weight-semibold);">
+                Your data will remain at your current store. Switching will show ${storeName}'s data instead.
+            </p>
+        `;
+        openModal('switchStoreModal');
+    } else {
+        // No data, switch immediately
+        performStoreSwitch(newStore);
+    }
+}
+
+async function confirmStoreSwitch() {
+    closeModal('switchStoreModal');
+    await performStoreSwitch(pendingStoreChange);
+    pendingStoreChange = null;
+}
+
+function cancelStoreSwitch() {
+    closeModal('switchStoreModal');
+
+    // Revert dropdowns to current store
+    initializeStoreSelector();
+    pendingStoreChange = null;
+}
+
+async function performStoreSwitch(newStore) {
+    try {
+        const storeSelector = document.getElementById('storeSelector');
+
+        // Re-populate options if needed to get the store name
+        const stateSelector = document.getElementById('stateSelector');
+        if (!storeSelector.options.length || storeSelector.options.length === 1) {
+            updateStoreOptions();
+            storeSelector.value = newStore;
+        }
+
+        const storeName = storeSelector.options[storeSelector.selectedIndex]?.text || `Store ${newStore}`;
+
+        // Update backend
+        const response = await auth.fetchWithAuth('/api/store', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ store_number: parseInt(newStore) })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update store');
+        }
+
+        // Update local state
+        selectedStore = newStore;
+        localStorage.setItem('selectedStore', selectedStore);
+
+        showToast(`Switched to ${storeName}`);
+        console.log(`🏪 Store switched to: ${storeName} (${newStore})`);
+
+        // Clear UI (data is store-specific now)
+        cart = [];
+        userFavorites.clear();
+        renderCart();
+
+        // Clear search results
+        document.getElementById('resultsGrid').innerHTML = '';
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('emptyResults').style.display = 'block';
+        currentSearchTerm = '';
+        currentSearchResults = [];
+
+        // Reload store-specific data
+        await loadCart();
+        await loadFrequentItems();
+        await loadUserFavorites();
+
+    } catch (error) {
+        console.error('Failed to switch store:', error);
+        showToast('Failed to switch stores - please try again', true);
+
+        // Revert dropdowns
+        initializeStoreSelector();
+    }
 }
 
 // ====== Favorites Functions ======
@@ -236,7 +517,10 @@ async function loadFrequentItems() {
         const favorites = favoritesData.favorites || [];
         const frequent = frequentData.items || [];
 
-        // Render favorites section
+        // ALWAYS render favorites section (even if empty)
+        const favoritesSection = document.getElementById('favoritesSection');
+        const favoritesContainer = document.getElementById('favoriteItems');
+
         if (favorites.length > 0) {
             const favoriteItems = favorites.slice(0, 8).map(item => ({
                 product: {
@@ -252,9 +536,17 @@ async function loadFrequentItems() {
             console.log(`✅ Found ${favoriteItems.length} favorites`);
             renderFavorites(favoriteItems);
             fetchMissingImagesForItems(favoriteItems, true);
+        } else {
+            // No favorites - hide section
+            console.log('📭 No favorites at this store');
+            favoritesContainer.innerHTML = '';
+            favoritesSection.style.display = 'none';
         }
 
-        // Render frequent items section (backend now filters for count >= 2 and is_manual = FALSE)
+        // ALWAYS render frequent items section (even if empty)
+        const frequentSection = document.getElementById('frequentSection');
+        const frequentContainer = document.getElementById('frequentItems');
+
         if (frequent.length > 0) {
             const frequentItems = frequent.slice(0, 8).map(item => ({
                 product: {
@@ -270,10 +562,20 @@ async function loadFrequentItems() {
             console.log(`✅ Found ${frequentItems.length} frequently bought items`);
             renderFrequentItems(frequentItems);
             fetchMissingImagesForItems(frequentItems, false);
+        } else {
+            // No frequent items - hide section
+            console.log('📭 No frequently bought items at this store');
+            frequentContainer.innerHTML = '';
+            frequentSection.style.display = 'none';
         }
 
     } catch (error) {
         console.log('  No favorites or frequent items yet (expected on first use)');
+        // On error, hide both sections
+        const favoritesSection = document.getElementById('favoritesSection');
+        const frequentSection = document.getElementById('frequentSection');
+        if (favoritesSection) favoritesSection.style.display = 'none';
+        if (frequentSection) frequentSection.style.display = 'none';
     }
 }
 
