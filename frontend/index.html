@@ -454,8 +454,17 @@
                 <div class="quantity-modal-product-price" id="qtyProductPrice"></div>
             </div>
 
+            <!-- Weight item hint (hidden by default, shown for weight items) -->
+            <div class="weight-hint" id="weightItemHint" style="display: none;">
+                <div class="hint-icon">💡</div>
+                <div class="hint-text">
+                    This item is sold by <strong><span id="weightUnitName">weight</span></strong>.
+                    You can enter decimal amounts (e.g., <span id="weightExample">1.5</span>).
+                </div>
+            </div>
+
             <div class="quantity-selector">
-                <label class="quantity-selector-label">Select Quantity (1-10)</label>
+                <label class="quantity-selector-label" id="quantitySelectorLabel">Select Quantity (1-10)</label>
                 <div class="quantity-slider-container">
                     <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">1</span>
                     <input type="range" min="1" max="10" value="1" class="quantity-slider" id="quantitySlider">

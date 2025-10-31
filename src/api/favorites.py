@@ -14,6 +14,7 @@ class AddFavoriteRequest(BaseModel):
     aisle: str
     image_url: str = ""
     is_sold_by_weight: bool = False
+    sell_by_unit: str = "Each"  # Unit name for display (lb, oz, pkg, Each, etc.)
 
 @router.post("/favorites/add")
 async def add_favorite_item(
@@ -36,6 +37,7 @@ async def add_favorite_item(
             aisle=request.aisle,
             image_url=request.image_url,
             is_sold_by_weight=request.is_sold_by_weight,
+            sell_by_unit=request.sell_by_unit,
             store_number=store_number
         )
 

@@ -35,6 +35,7 @@ class AddItemToRecipeRequest(BaseModel):
     search_term: Optional[str] = None
     is_sold_by_weight: bool = False
     unit_price: Optional[str] = None
+    sell_by_unit: str = "Each"  # Unit name for display (lb, oz, pkg, Each, etc.)
 
 class UpdateRecipeItemQuantityRequest(BaseModel):
     quantity: float
@@ -96,7 +97,8 @@ async def add_item(recipe_id: int, item_req: AddItemToRecipeRequest, user: AuthU
         'image': item_req.image,
         'search_term': item_req.search_term,
         'is_sold_by_weight': item_req.is_sold_by_weight,
-        'unit_price': item_req.unit_price
+        'unit_price': item_req.unit_price,
+        'sell_by_unit': item_req.sell_by_unit
     })
 
     return {"success": True}

@@ -113,8 +113,8 @@ def add_to_cart(user_id: str, product: dict, quantity: float, store_number: int)
             cursor.execute("""
                 INSERT INTO shopping_carts
                 (user_id, store_number, product_name, price, quantity, aisle, image_url,
-                 search_term, is_sold_by_weight, unit_price)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 search_term, is_sold_by_weight, unit_price, sell_by_unit)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 user_id,
                 store_number,
@@ -125,7 +125,8 @@ def add_to_cart(user_id: str, product: dict, quantity: float, store_number: int)
                 product.get('image'),
                 product.get('search_term', ''),
                 product.get('is_sold_by_weight', False),
-                product.get('unit_price')
+                product.get('unit_price'),
+                product.get('sell_by_unit', 'Each')
             ))
 
 def update_cart_quantity(user_id: str, cart_item_id: int, quantity: float, store_number: int):
@@ -280,8 +281,8 @@ def save_cart_as_list(user_id: str, list_name: str, store_number: int) -> int:
         # Step 2: Copy cart items to list (within same transaction)
         cursor.execute("""
             INSERT INTO saved_list_items
-            (list_id, product_name, price, quantity, aisle, is_sold_by_weight)
-            SELECT %s, product_name, price, quantity, aisle, is_sold_by_weight
+            (list_id, product_name, price, quantity, aisle, is_sold_by_weight, sell_by_unit)
+            SELECT %s, product_name, price, quantity, aisle, is_sold_by_weight, sell_by_unit
             FROM shopping_carts
             WHERE user_id = %s AND store_number = %s
         """, (list_id, user_id, store_number))
@@ -321,8 +322,8 @@ def load_list_to_cart(user_id: str, list_id: int, store_number: int):
         # Step 3: Load list items into cart WITH store_number (within same transaction)
         cursor.execute("""
             INSERT INTO shopping_carts
-            (user_id, store_number, product_name, price, quantity, aisle, search_term, is_sold_by_weight)
-            SELECT %s, %s, product_name, price, quantity, aisle, '', is_sold_by_weight
+            (user_id, store_number, product_name, price, quantity, aisle, search_term, is_sold_by_weight, sell_by_unit)
+            SELECT %s, %s, product_name, price, quantity, aisle, '', is_sold_by_weight, sell_by_unit
             FROM saved_list_items
             WHERE list_id = %s
         """, (user_id, store_number, list_id))
@@ -336,7 +337,7 @@ def update_frequent_items(user_id: str, store_number: int):
     with get_db() as cursor:
         cursor.execute("""
             INSERT INTO frequent_items
-            (user_id, store_number, product_name, price, aisle, image_url, purchase_count, is_sold_by_weight, last_purchased)
+            (user_id, store_number, product_name, price, aisle, image_url, purchase_count, is_sold_by_weight, sell_by_unit, last_purchased)
             SELECT
                 %s,
                 %s,
@@ -346,6 +347,7 @@ def update_frequent_items(user_id: str, store_number: int):
                 image_url,
                 1,
                 is_sold_by_weight,
+                sell_by_unit,
                 CURRENT_TIMESTAMP
             FROM shopping_carts
             WHERE user_id = %s AND store_number = %s
@@ -354,7 +356,8 @@ def update_frequent_items(user_id: str, store_number: int):
                 last_purchased = CURRENT_TIMESTAMP,
                 price = EXCLUDED.price,
                 aisle = EXCLUDED.aisle,
-                image_url = EXCLUDED.image_url
+                image_url = EXCLUDED.image_url,
+                sell_by_unit = EXCLUDED.sell_by_unit
         """, (user_id, store_number, user_id, store_number))
 
 def get_frequent_items(user_id: str, store_number: int, limit: int = 20) -> List[Dict]:
@@ -380,7 +383,7 @@ def get_frequent_items(user_id: str, store_number: int, limit: int = 20) -> List
 
 # === Favorites Operations ===
 
-def add_favorite(user_id: str, product_name: str, price: str, aisle: str, image_url: str, is_sold_by_weight: bool, store_number: int):
+def add_favorite(user_id: str, product_name: str, price: str, aisle: str, image_url: str, is_sold_by_weight: bool, sell_by_unit: str, store_number: int):
     """
     Add item to favorites (manual) for specific store
 
@@ -392,8 +395,8 @@ def add_favorite(user_id: str, product_name: str, price: str, aisle: str, image_
 
         cursor.execute("""
             INSERT INTO frequent_items
-                (user_id, store_number, product_name, price, aisle, image_url, purchase_count, is_manual, is_sold_by_weight, last_purchased)
-            VALUES (%s, %s, %s, %s, %s, %s, 999, TRUE, %s, CURRENT_TIMESTAMP)
+                (user_id, store_number, product_name, price, aisle, image_url, purchase_count, is_manual, is_sold_by_weight, sell_by_unit, last_purchased)
+            VALUES (%s, %s, %s, %s, %s, %s, 999, TRUE, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT (user_id, store_number, product_name)
             DO UPDATE SET
                 is_manual = TRUE,
@@ -402,8 +405,9 @@ def add_favorite(user_id: str, product_name: str, price: str, aisle: str, image_
                 price = EXCLUDED.price,
                 aisle = EXCLUDED.aisle,
                 image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), frequent_items.image_url),
-                is_sold_by_weight = EXCLUDED.is_sold_by_weight
-        """, (user_id, store_number, product_name, price_float, aisle, image_url, is_sold_by_weight))
+                is_sold_by_weight = EXCLUDED.is_sold_by_weight,
+                sell_by_unit = EXCLUDED.sell_by_unit
+        """, (user_id, store_number, product_name, price_float, aisle, image_url, is_sold_by_weight, sell_by_unit))
 
 def remove_favorite(user_id: str, product_name: str, store_number: int):
     """
@@ -524,9 +528,9 @@ def save_cart_as_recipe(user_id: str, name: str, store_number: int, description:
         cursor.execute("""
             INSERT INTO recipe_items
             (recipe_id, product_name, price, quantity, aisle, image_url,
-             search_term, is_sold_by_weight, unit_price)
+             search_term, is_sold_by_weight, unit_price, sell_by_unit)
             SELECT %s, product_name, price, quantity, aisle, image_url,
-                   search_term, is_sold_by_weight, unit_price
+                   search_term, is_sold_by_weight, unit_price, sell_by_unit
             FROM shopping_carts
             WHERE user_id = %s AND store_number = %s
         """, (recipe_id, user_id, store_number))
@@ -542,8 +546,8 @@ def add_item_to_recipe(recipe_id: int, item: dict):
         cursor.execute("""
             INSERT INTO recipe_items
             (recipe_id, product_name, price, quantity, aisle, image_url,
-             search_term, is_sold_by_weight, unit_price)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+             search_term, is_sold_by_weight, unit_price, sell_by_unit)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             recipe_id,
             item['name'],
@@ -553,7 +557,8 @@ def add_item_to_recipe(recipe_id: int, item: dict):
             item.get('image'),
             item.get('search_term', ''),
             item.get('is_sold_by_weight', False),
-            item.get('unit_price')
+            item.get('unit_price'),
+            item.get('sell_by_unit', 'Each')
         ))
 
 def update_recipe_item_quantity(recipe_item_id: int, quantity: float):
@@ -691,26 +696,28 @@ def load_recipe_to_cart(user_id: str, recipe_id: int, store_number: int, item_id
             cursor.execute(f"""
                 INSERT INTO shopping_carts
                 (user_id, store_number, product_name, price, quantity, aisle, image_url,
-                 search_term, is_sold_by_weight, unit_price)
+                 search_term, is_sold_by_weight, unit_price, sell_by_unit)
                 SELECT %s, %s, product_name, price, quantity, aisle, image_url,
-                       search_term, is_sold_by_weight, unit_price
+                       search_term, is_sold_by_weight, unit_price, sell_by_unit
                 FROM recipe_items
                 WHERE recipe_id = %s AND id IN ({placeholders})
                 ON CONFLICT (user_id, store_number, product_name) DO UPDATE SET
-                    quantity = shopping_carts.quantity + EXCLUDED.quantity
+                    quantity = shopping_carts.quantity + EXCLUDED.quantity,
+                    sell_by_unit = EXCLUDED.sell_by_unit
             """, (user_id, store_number, recipe_id, *item_ids))
         else:
             # Add all items
             cursor.execute("""
                 INSERT INTO shopping_carts
                 (user_id, store_number, product_name, price, quantity, aisle, image_url,
-                 search_term, is_sold_by_weight, unit_price)
+                 search_term, is_sold_by_weight, unit_price, sell_by_unit)
                 SELECT %s, %s, product_name, price, quantity, aisle, image_url,
-                       search_term, is_sold_by_weight, unit_price
+                       search_term, is_sold_by_weight, unit_price, sell_by_unit
                 FROM recipe_items
                 WHERE recipe_id = %s
                 ON CONFLICT (user_id, store_number, product_name) DO UPDATE SET
-                    quantity = shopping_carts.quantity + EXCLUDED.quantity
+                    quantity = shopping_carts.quantity + EXCLUDED.quantity,
+                    sell_by_unit = EXCLUDED.sell_by_unit
             """, (user_id, store_number, recipe_id))
 
 # === User Store Operations ===

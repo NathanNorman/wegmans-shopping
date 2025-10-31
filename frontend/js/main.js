@@ -724,29 +724,47 @@ function renderFrequentItems(frequentItems) {
     let html = '';
     frequentItems.forEach(item => {
         const product = item.product;
+
+        // Add weight badge for frequent items
+        const weightBadge = product.is_sold_by_weight
+            ? `<div class="weight-badge-mini">⚖️ ${product.sell_by_unit || 'lb'}</div>`
+            : '';
+
         const imageHtml = product.image
-            ? `<img src="${escapeHtml(product.image)}" class="frequent-item-image" alt="${escapeHtml(product.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-               <div class="frequent-item-image-placeholder" style="display: none;">
-                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-                       <circle cx="9" cy="21" r="1"></circle>
-                       <circle cx="20" cy="21" r="1"></circle>
-                       <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                   </svg>
+            ? `<div class="frequent-item-image-container">
+                   <img src="${escapeHtml(product.image)}" class="frequent-item-image" alt="${escapeHtml(product.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                   <div class="frequent-item-image-placeholder" style="display: none;">
+                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                           <circle cx="9" cy="21" r="1"></circle>
+                           <circle cx="20" cy="21" r="1"></circle>
+                           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                       </svg>
+                   </div>
+                   ${weightBadge}
                </div>`
-            : `<div class="frequent-item-image-placeholder">
-                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
-                       <circle cx="9" cy="21" r="1"></circle>
-                       <circle cx="20" cy="21" r="1"></circle>
-                       <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                   </svg>
+            : `<div class="frequent-item-image-container">
+                   <div class="frequent-item-image-placeholder">
+                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                           <circle cx="9" cy="21" r="1"></circle>
+                           <circle cx="20" cy="21" r="1"></circle>
+                           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                       </svg>
+                   </div>
+                   ${weightBadge}
                </div>`;
+
+        // Format price with unit price for weight items
+        let priceDisplay = escapeHtml(product.price);
+        if (product.is_sold_by_weight && product.unit_price) {
+            priceDisplay += ` <span class="unit-price-mini">${escapeHtml(product.unit_price)}</span>`;
+        }
 
         html += `
             <div class="frequent-item" onclick='showQuantityModal(${JSON.stringify(product)})'>
                 ${imageHtml}
                 <div class="frequent-item-name">${escapeHtml(product.name)}</div>
                 <div class="frequent-item-footer">
-                    <span class="frequent-item-price">${escapeHtml(product.price)}</span>
+                    <span class="frequent-item-price">${priceDisplay}</span>
                     <span class="frequent-item-badge" title="Appears in ${item.count} past lists">In ${item.count} lists</span>
                 </div>
             </div>
@@ -768,24 +786,79 @@ function showQuantityModal(product) {
     document.getElementById('qtyProductName').textContent = product.name;
     document.getElementById('qtyProductPrice').textContent = product.price;
 
-    // Reset form
-    document.getElementById('quantitySlider').value = 1;
-    document.getElementById('quantityDisplay').textContent = '1';
-    document.getElementById('customQuantityInput').value = '';
+    // Configure for weight items vs count items
+    const weightHint = document.getElementById('weightItemHint');
+    const slider = document.getElementById('quantitySlider');
+    const customInput = document.getElementById('customQuantityInput');
+    const quantityLabel = document.getElementById('quantitySelectorLabel');
+
+    if (product.is_sold_by_weight) {
+        // Weight item - show hint and allow decimals
+        const unit = product.sell_by_unit || 'lb';
+        const unitPlural = getPluralUnit(unit);
+
+        // Show weight hint
+        weightHint.style.display = 'flex';
+        document.getElementById('weightUnitName').textContent = unit;
+        document.getElementById('weightExample').textContent = '1.5';
+
+        // Update label
+        quantityLabel.textContent = `Select ${capitalizeFirst(unitPlural)} (0.1-10)`;
+
+        // Configure slider for decimals (use 0.5 increments displayed as decimals)
+        slider.min = '1';
+        slider.max = '20';
+        slider.value = '2';
+        slider.step = '1';
+
+        // Configure custom input for decimals
+        customInput.min = '0.1';
+        customInput.max = '99.9';
+        customInput.step = '0.1';
+        customInput.placeholder = `e.g., 1.5 ${unitPlural}`;
+
+        // Reset form to 1.0
+        document.getElementById('quantityDisplay').textContent = '1';
+        customInput.value = '';
+
+    } else {
+        // Count item - hide hint, use integers
+        weightHint.style.display = 'none';
+        quantityLabel.textContent = 'Select Quantity (1-10)';
+
+        // Configure for integers
+        slider.min = '1';
+        slider.max = '10';
+        slider.value = '1';
+        slider.step = '1';
+
+        customInput.min = '1';
+        customInput.max = '999';
+        customInput.step = '1';
+        customInput.placeholder = 'e.g., 20';
+
+        // Reset form
+        document.getElementById('quantityDisplay').textContent = '1';
+        customInput.value = '';
+    }
 
     // Show modal
     const modal = document.getElementById('quantityModal');
     modal.classList.add('show');
 
     // Setup slider listener
-    const slider = document.getElementById('quantitySlider');
     slider.oninput = function() {
-        document.getElementById('quantityDisplay').textContent = this.value;
-        document.getElementById('customQuantityInput').value = ''; // Clear custom input
+        // For weight items, slider shows 1-20 which maps to 0.5-10.0 in 0.5 increments
+        if (product.is_sold_by_weight) {
+            const value = parseFloat(this.value) / 2.0;
+            document.getElementById('quantityDisplay').textContent = value.toFixed(1);
+        } else {
+            document.getElementById('quantityDisplay').textContent = this.value;
+        }
+        customInput.value = ''; // Clear custom input
     };
 
     // Setup custom input listener
-    const customInput = document.getElementById('customQuantityInput');
     customInput.oninput = function() {
         if (this.value) {
             document.getElementById('quantityDisplay').textContent = this.value;
@@ -794,6 +867,24 @@ function showQuantityModal(product) {
 
     // ESC and backdrop close
     openModal('quantityModal');
+}
+
+// Helper function to get plural unit names
+function getPluralUnit(unit) {
+    const plurals = {
+        'lb': 'lbs',
+        'oz': 'oz',
+        'kg': 'kg',
+        'g': 'g',
+        'pkg': 'packages',
+        'Each': 'items'
+    };
+    return plurals[unit] || unit + 's';
+}
+
+// Helper function to capitalize first letter
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 function closeQuantityModal() {
@@ -828,7 +919,8 @@ async function confirmAddQuantity() {
                 image: currentProductForQuantity.image,
                 search_term: currentProductForQuantity.search_term || 'frequent',
                 is_sold_by_weight: currentProductForQuantity.is_sold_by_weight || false,
-                unit_price: currentProductForQuantity.unit_price || null
+                unit_price: currentProductForQuantity.unit_price || null,
+                sell_by_unit: currentProductForQuantity.sell_by_unit || 'Each'
             })
         });
 
@@ -1248,6 +1340,9 @@ function displayResults(products, searchTerm) {
         card.appendChild(starBtn);
 
         // Add image or placeholder using DOM (not innerHTML)
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'product-image-container';
+
         if (product.image) {
             const img = document.createElement('img');
             img.src = product.image;
@@ -1256,7 +1351,7 @@ function displayResults(products, searchTerm) {
             img.onerror = function() {
                 this.src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23999%27 stroke-width=%271.5%27%3E%3Ccircle cx=%279%27 cy=%2721%27 r=%271%27/%3E%3Ccircle cx=%2720%27 cy=%2721%27 r=%271%27/%3E%3Cpath d=%27M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%27/%3E%3C/svg%3E';
             };
-            card.appendChild(img);
+            imageContainer.appendChild(img);
         } else {
             const placeholder = document.createElement('div');
             placeholder.className = 'product-image';
@@ -1268,8 +1363,19 @@ function displayResults(products, searchTerm) {
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                 </svg>
             `;
-            card.appendChild(placeholder);
+            imageContainer.appendChild(placeholder);
         }
+
+        // Add weight badge if sold by weight
+        if (product.is_sold_by_weight) {
+            const weightBadge = document.createElement('div');
+            weightBadge.className = 'weight-badge';
+            const unit = product.sell_by_unit || 'lb';
+            weightBadge.textContent = `sold by ${unit}`;
+            imageContainer.appendChild(weightBadge);
+        }
+
+        card.appendChild(imageContainer);
 
         // Add product name
         const nameDiv = document.createElement('div');
@@ -1277,13 +1383,20 @@ function displayResults(products, searchTerm) {
         nameDiv.textContent = product.name;
         card.appendChild(nameDiv);
 
-        // Add product info
+        // Add product info with unit price for weight items
         const infoDiv = document.createElement('div');
         infoDiv.className = 'product-info';
-        infoDiv.innerHTML = `
-            <span class="product-price">${escapeHtml(product.price)}</span>
-            <span class="product-aisle">${escapeHtml(product.aisle)}</span>
-        `;
+
+        let infoHTML = `<span class="product-price">${escapeHtml(product.price)}</span>`;
+
+        // Add unit price if weight item
+        if (product.is_sold_by_weight && product.unit_price) {
+            infoHTML += `<span class="unit-price">${escapeHtml(product.unit_price)}</span>`;
+        }
+
+        infoHTML += `<span class="product-aisle">${escapeHtml(product.aisle)}</span>`;
+
+        infoDiv.innerHTML = infoHTML;
         card.appendChild(infoDiv);
 
         grid.appendChild(card);
@@ -1375,14 +1488,37 @@ function renderCart() {
         const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
         const displayAisle = item.aisle || 'Unknown';
 
+        // Format quantity with units for weight items
+        let qtyDisplay = qty;
+        let qtyInputStep = '1';
+        let qtyInputMin = '1';
+        if (item.is_sold_by_weight) {
+            const unit = item.sell_by_unit || 'lb';
+            const unitPlural = getPluralUnit(unit);
+            qtyDisplay = `${qty} ${unitPlural}`;
+            qtyInputStep = '0.1';
+            qtyInputMin = '0.1';
+        }
+
+        // Add weight badge for cart items
+        const weightBadge = item.is_sold_by_weight
+            ? '<span class="cart-weight-badge">⚖️</span>'
+            : '';
+
         html += `
             <div class="cart-item">
-                <input type="number" class="cart-item-qty" value="${qty}" min="1"
-                    onchange="updateQuantity(${index}, this.value)">
+                <div class="cart-item-qty-container">
+                    <input type="number" class="cart-item-qty" value="${qty}" min="${qtyInputMin}" step="${qtyInputStep}"
+                        onchange="updateQuantity(${index}, this.value)">
+                    ${item.is_sold_by_weight ? `<span class="cart-qty-unit">${getPluralUnit(item.sell_by_unit || 'lb')}</span>` : ''}
+                </div>
                 <div class="cart-item-details">
-                    <div class="cart-item-name">${escapeHtml(displayName)}</div>
+                    <div class="cart-item-name">
+                        ${weightBadge}
+                        ${escapeHtml(displayName)}
+                    </div>
                     <div class="cart-item-meta">
-                        ${escapeHtml(displayPrice)} • Aisle ${escapeHtml(displayAisle)}
+                        ${escapeHtml(displayPrice)}${item.is_sold_by_weight && item.unit_price ? ` <span class="unit-price-cart">(${escapeHtml(item.unit_price)})</span>` : ''} • Aisle ${escapeHtml(displayAisle)}
                     </div>
                 </div>
                 <button class="cart-item-delete" onclick="removeFromCart(${index})">×</button>
@@ -2236,10 +2372,21 @@ function generatePrintableList() {
         byAisle[aisle].forEach(item => {
             const name = item.product_name || item.name;
             const price = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+            // Format quantity with units for weight items
+            let qtyDisplay;
+            if (item.is_sold_by_weight) {
+                const unit = item.sell_by_unit || 'lb';
+                const unitPlural = getPluralUnit(unit);
+                qtyDisplay = `${item.quantity} ${unitPlural}`;
+            } else {
+                qtyDisplay = `${item.quantity}×`;
+            }
+
             html += `
                 <tr>
                     <td><span class="checkbox"></span></td>
-                    <td class="qty">${item.quantity}×</td>
+                    <td class="qty">${qtyDisplay}</td>
                     <td>${escapeHtml(name)}</td>
                     <td class="price">${price}</td>
                 </tr>
@@ -2650,8 +2797,16 @@ function exportToText() {
             const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
 
             text += `* ${displayName} - ${displayPrice}`;
-            if (item.quantity > 1) {
-                text += ` (qty: ${item.quantity})`;
+
+            // Add quantity with units
+            if (item.quantity > 1 || item.is_sold_by_weight) {
+                if (item.is_sold_by_weight) {
+                    const unit = item.sell_by_unit || 'lb';
+                    const unitPlural = getPluralUnit(unit);
+                    text += ` (${item.quantity} ${unitPlural})`;
+                } else {
+                    text += ` (qty: ${item.quantity})`;
+                }
             }
             text += '\n';
         });

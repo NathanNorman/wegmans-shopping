@@ -23,6 +23,7 @@ class AddToCartRequest(BaseModel):
     search_term: Optional[str] = None
     is_sold_by_weight: bool = False
     unit_price: Optional[str] = None
+    sell_by_unit: str = "Each"  # Unit name for display (lb, oz, pkg, Each, etc.)
 
 class UpdateQuantityRequest(BaseModel):
     cart_item_id: int
@@ -47,7 +48,8 @@ async def add_item(item: AddToCartRequest, user: AuthUser = Depends(get_current_
         'image': item.image,
         'search_term': item.search_term,
         'is_sold_by_weight': item.is_sold_by_weight,
-        'unit_price': item.unit_price
+        'unit_price': item.unit_price,
+        'sell_by_unit': item.sell_by_unit
     }
 
     add_to_cart(str(user.id), product, item.quantity, store_number)
