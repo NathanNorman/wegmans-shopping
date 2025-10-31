@@ -188,6 +188,43 @@ body {
     line-height: var(--line-height-base);
 }
 
+/* Store Selector (Two-Tier) */
+.store-selector-wrapper {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.store-selector {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.95);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all var(--transition-base);
+    font-weight: var(--font-weight-semibold);
+}
+
+.store-selector:hover:not(:disabled) {
+    background: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.store-selector:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.store-selector:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+}
+
 .main-container {
     display: flex;
     max-width: 1400px;
