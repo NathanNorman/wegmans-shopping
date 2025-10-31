@@ -20,7 +20,9 @@ scraper = AlgoliaDirectScraper()
 
 class SearchRequest(BaseModel):
     search_term: str
-    max_results: int = 10
+    max_results: int = 20  # Increased from 10 to 20
+    offset: int = 0        # For pagination support
+    store_number: int = 86 # Default: Raleigh, NC
 
 def rate_limit_decorator():
     """Conditionally apply rate limiting based on settings"""
@@ -41,32 +43,42 @@ async def search_products(request: Request, search: SearchRequest, background_ta
     Returns products from cache if available, otherwise queries Algolia directly
     """
 
-    # Check cache first
+    # Check cache first (pagination from cache)
     cached = get_cached_search(search.search_term)
     if cached:
-        logger.info(f"✅ Cache hit for '{search.search_term}'")
+        logger.info(f"✅ Cache hit for '{search.search_term}' (offset: {search.offset})")
+        # Return paginated slice from cache
+        start = search.offset
+        end = start + search.max_results
         return {
-            "products": cached[:search.max_results],
-            "from_cache": True
+            "products": cached[start:end],
+            "from_cache": True,
+            "total_in_cache": len(cached)
         }
 
     # Not in cache, query Algolia directly (NO BROWSER!)
     logger.info(f"⚡ Cache miss - Querying Algolia API for '{search.search_term}'")
 
     try:
+        # Always fetch more results to populate cache (100 products)
         products = scraper.search_products(
             search.search_term,
-            max_results=search.max_results
+            max_results=100,  # Cache lots of results
+            store_number=search.store_number
         )
 
         logger.info(f"✅ Search complete - Found {len(products)} products in ~1 second!")
 
-        # Cache results in background
+        # Cache results in background (all 100 products)
         background_tasks.add_task(cache_search_results, search.search_term, products)
 
+        # Return requested page
+        start = search.offset
+        end = start + search.max_results
         return {
-            "products": products,
-            "from_cache": False
+            "products": products[start:end],
+            "from_cache": False,
+            "total_found": len(products)
         }
 
     except Exception as e:

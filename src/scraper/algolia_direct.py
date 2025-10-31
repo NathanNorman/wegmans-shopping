@@ -19,26 +19,28 @@ class AlgoliaDirectScraper:
         self.ALGOLIA_URL = "https://qgppr19v8v-dsn.algolia.net/1/indexes/*/queries"
         self.STORE_NUMBER = settings.ALGOLIA_STORE_NUMBER
     
-    def search_products(self, query: str, max_results: int = 10) -> List[Dict]:
+    def search_products(self, query: str, max_results: int = 10, store_number: int = None) -> List[Dict]:
         """
         Search Wegmans products via direct Algolia API call
-        
+
         Args:
             query: Search term
             max_results: Maximum products to return
-            
+            store_number: Wegmans store number (defaults to configured store)
+
         Returns:
             List of product dictionaries with name, price, aisle, image
         """
-        logger.info(f"🚀 Direct Algolia search for '{query}' at store {self.STORE_NUMBER}")
-        
+        store = store_number if store_number is not None else self.STORE_NUMBER
+        logger.info(f"🚀 Direct Algolia search for '{query}' at store {store}")
+
         # Build request payload
         payload = {
             "requests": [{
                 "indexName": "products",
                 "query": query,
                 "hitsPerPage": max_results,
-                "filters": f"storeNumber:{self.STORE_NUMBER} AND fulfilmentType:instore"
+                "filters": f"storeNumber:{store} AND fulfilmentType:instore"
             }]
         }
         

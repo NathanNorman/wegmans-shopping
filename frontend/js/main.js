@@ -1,6 +1,17 @@
 let cart = [];
 const NC_TAX_RATE = 0.04;
 
+// Favorites state
+let userFavorites = new Set(); // Set of favorited product names
+
+// Search pagination state
+let currentSearchTerm = '';
+let currentSearchResults = [];
+const RESULTS_PER_PAGE = 20;
+
+// Store selection
+let selectedStore = localStorage.getItem('selectedStore') || '86'; // Default: Raleigh
+
 console.log('🚀 Wegmans Shopping List Builder initialized');
 console.log('📝 Console logging enabled for debugging');
 
@@ -76,7 +87,7 @@ async function updateTodaysListIndicator() {
 }
 
 // Load saved cart from API
-console.log('💾 Loading saved cart...');
+console.log('💾 Loading saved list...');
 async function loadCart() {
     try {
         const response = await auth.fetchWithAuth('/api/cart');
@@ -102,65 +113,180 @@ async function loadCart() {
 
 // Export for auth.js to call after initialization
 window.appReady = function() {
-    console.log('🎬 App ready - Auth initialized, loading cart...');
+    console.log('🎬 App ready - Auth initialized, loading list...');
+    initializeStoreSelector();
     loadCart();
     loadFrequentItems();
+    loadUserFavorites();
 };
 
-// Frequently bought items functions
-async function loadFrequentItems() {
-    console.log('⭐ Loading frequently bought items from database...');
+// ====== Store Selection Functions ======
 
-    try {
-        const response = await auth.fetchWithAuth('/api/frequent');
-        const data = await response.json();
-        const items = data.items || [];
-
-        if (items.length === 0) {
-            console.log('  No frequent items found in database');
-            return;
-        }
-
-        // Filter to only show items bought 2+ times
-        const frequentlyBought = items.filter(item => item.purchase_count >= 2);
-
-        if (frequentlyBought.length === 0) {
-            console.log('  No items bought 2+ times yet');
-            return;
-        }
-
-        // Transform database format to match what renderFrequentItems expects
-        const frequentItems = frequentlyBought.slice(0, 8).map(item => ({
-            product: {
-                name: item.product_name,
-                price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
-                aisle: item.aisle,
-                image: item.image_url,
-                is_sold_by_weight: item.is_sold_by_weight || false
-            },
-            count: item.purchase_count
-        }));
-
-        console.log('✅ Found', frequentItems.length, 'frequently bought items (2+ purchases) from database');
-        renderFrequentItems(frequentItems);
-
-        // Fetch missing images in background
-        fetchMissingImagesForFrequentItems(frequentItems);
-
-    } catch (error) {
-        console.log('  No frequent items yet (expected on first use)');
+function initializeStoreSelector() {
+    const selector = document.getElementById('storeSelector');
+    if (selector) {
+        selector.value = selectedStore;
+        console.log(`🏪 Store initialized: ${selector.options[selector.selectedIndex].text}`);
     }
 }
 
-async function fetchMissingImagesForFrequentItems(frequentItems) {
+function changeStore() {
+    const selector = document.getElementById('storeSelector');
+    selectedStore = selector.value;
+    localStorage.setItem('selectedStore', selectedStore);
+
+    const storeName = selector.options[selector.selectedIndex].text;
+    console.log(`🏪 Store changed to: ${storeName} (${selectedStore})`);
+
+    showToast(`Store changed to ${storeName}`);
+
+    // Clear search results since they're for a different store
+    document.getElementById('resultsGrid').innerHTML = '';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('emptyResults').style.display = 'block';
+    currentSearchTerm = '';
+    currentSearchResults = [];
+}
+
+// ====== Favorites Functions ======
+
+async function loadUserFavorites() {
+    try {
+        const response = await auth.fetchWithAuth('/api/favorites');
+        const data = await response.json();
+
+        userFavorites = new Set(data.favorites.map(item => item.product_name));
+        console.log(`⭐ Loaded ${userFavorites.size} favorites`);
+    } catch (error) {
+        console.error('Failed to load favorites:', error);
+        userFavorites = new Set();
+    }
+}
+
+function isFavorited(productName) {
+    return userFavorites.has(productName);
+}
+
+async function toggleFavorite(product, event) {
+    // Prevent card click from firing
+    event.stopPropagation();
+
+    const productName = product.name;
+    const wasFavorited = userFavorites.has(productName);
+
+    // Store button reference BEFORE async calls (event.currentTarget becomes null)
+    const starBtn = event.currentTarget;
+    const starIcon = starBtn ? starBtn.querySelector('.star-icon') : null;
+
+    try {
+        if (wasFavorited) {
+            // Show confirmation modal for unfavoriting
+            window.productToUnfavorite = { product, starBtn, starIcon };
+            document.getElementById('removeFavoriteMessage').textContent =
+                `Remove "${product.name}" from your favorites?`;
+            openModal('removeFavoriteModal');
+        } else {
+            // Add to favorites
+            const response = await auth.fetchWithAuth('/api/favorites/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    product_name: product.name,
+                    price: product.price,
+                    aisle: product.aisle,
+                    image_url: product.image || '',
+                    is_sold_by_weight: product.is_sold_by_weight || false
+                })
+            });
+
+            if (response.ok) {
+                userFavorites.add(productName);
+                showToast('⭐ Added to favorites');
+
+                // Update UI (safe because we stored reference)
+                if (starBtn) {
+                    starBtn.classList.add('favorited');
+                    if (starIcon) starIcon.classList.add('filled');
+                }
+
+                // Reload frequent items to update display
+                await loadFrequentItems();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to toggle favorite:', error);
+        showToast('Failed to update favorites', true);
+    }
+}
+
+// Load both favorites and frequent items
+async function loadFrequentItems() {
+    console.log('⭐ Loading favorites and frequent items from database...');
+
+    try {
+        // Load both in parallel
+        const [favoritesResponse, frequentResponse] = await Promise.all([
+            auth.fetchWithAuth('/api/favorites'),
+            auth.fetchWithAuth('/api/frequent')
+        ]);
+
+        const favoritesData = await favoritesResponse.json();
+        const frequentData = await frequentResponse.json();
+
+        const favorites = favoritesData.favorites || [];
+        const frequent = frequentData.items || [];
+
+        // Render favorites section
+        if (favorites.length > 0) {
+            const favoriteItems = favorites.slice(0, 8).map(item => ({
+                product: {
+                    name: item.product_name,
+                    price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                    aisle: item.aisle,
+                    image: item.image_url,
+                    is_sold_by_weight: item.is_sold_by_weight || false
+                },
+                count: item.purchase_count
+            }));
+
+            console.log(`✅ Found ${favoriteItems.length} favorites`);
+            renderFavorites(favoriteItems);
+            fetchMissingImagesForItems(favoriteItems, true);
+        }
+
+        // Render frequent items section (backend now filters for count >= 2 and is_manual = FALSE)
+        if (frequent.length > 0) {
+            const frequentItems = frequent.slice(0, 8).map(item => ({
+                product: {
+                    name: item.product_name,
+                    price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                    aisle: item.aisle,
+                    image: item.image_url,
+                    is_sold_by_weight: item.is_sold_by_weight || false
+                },
+                count: item.purchase_count
+            }));
+
+            console.log(`✅ Found ${frequentItems.length} frequently bought items`);
+            renderFrequentItems(frequentItems);
+            fetchMissingImagesForItems(frequentItems, false);
+        }
+
+    } catch (error) {
+        console.log('  No favorites or frequent items yet (expected on first use)');
+    }
+}
+
+async function fetchMissingImagesForItems(items, isFavorites) {
     // Find items without images
-    const itemsNeedingImages = frequentItems.filter(item => !item.product.image);
+    const itemsNeedingImages = items.filter(item => !item.product.image);
 
     if (itemsNeedingImages.length === 0) {
         return;
     }
 
-    console.log(`🖼️  Fetching images for ${itemsNeedingImages.length} frequent items (parallel batch)...`);
+    const sectionName = isFavorites ? 'favorites' : 'frequent items';
+    console.log(`🖼️  Fetching images for ${itemsNeedingImages.length} ${sectionName} (parallel batch)...`);
 
     try {
         // Batch API call - fetch all images in one request
@@ -188,7 +314,11 @@ async function fetchMissingImagesForFrequentItems(frequentItems) {
 
         if (updatedCount > 0) {
             // Re-render once with all updated images
-            renderFrequentItems(frequentItems);
+            if (isFavorites) {
+                renderFavorites(items);
+            } else {
+                renderFrequentItems(items);
+            }
             console.log(`✅ Updated ${updatedCount} images (${data.success_count}/${data.total_count} found)`);
         } else {
             console.log('ℹ️  No new images found');
@@ -197,6 +327,92 @@ async function fetchMissingImagesForFrequentItems(frequentItems) {
     } catch (error) {
         console.error('❌ Failed to fetch images:', error);
     }
+}
+
+function renderFavorites(favoriteItems) {
+    const section = document.getElementById('favoritesSection');
+    const container = document.getElementById('favoriteItems');
+
+    container.innerHTML = ''; // Clear existing
+
+    favoriteItems.forEach(item => {
+        const product = item.product;
+
+        // Create card
+        const card = document.createElement('div');
+        card.className = 'frequent-item favorite-item-card';
+        card.onclick = () => showQuantityModal(product);
+
+        // Add star button (always favorited in this section)
+        const starBtn = document.createElement('button');
+        starBtn.className = 'btn-favorite favorited btn-favorite-small';
+        starBtn.title = 'Remove from favorites';
+        starBtn.onclick = (e) => toggleFavorite(product, e);
+        starBtn.innerHTML = `
+            <svg class="star-icon filled"
+                 width="18" height="18" viewBox="0 0 24 24"
+                 fill="currentColor"
+                 stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        `;
+        card.appendChild(starBtn);
+
+        // Add image or placeholder
+        if (product.image) {
+            const img = document.createElement('img');
+            img.src = product.image;
+            img.className = 'frequent-item-image';
+            img.alt = product.name;
+            img.onerror = function() {
+                this.style.display = 'none';
+                this.nextElementSibling.style.display = 'flex';
+            };
+            card.appendChild(img);
+
+            const placeholder = document.createElement('div');
+            placeholder.className = 'frequent-item-image-placeholder';
+            placeholder.style.display = 'none';
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+            `;
+            card.appendChild(placeholder);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'frequent-item-image-placeholder';
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+            `;
+            card.appendChild(placeholder);
+        }
+
+        // Add product name
+        const name = document.createElement('div');
+        name.className = 'frequent-item-name';
+        name.textContent = product.name;
+        card.appendChild(name);
+
+        // Add footer with price and badge
+        const footer = document.createElement('div');
+        footer.className = 'frequent-item-footer';
+        footer.innerHTML = `
+            <span class="frequent-item-price">${escapeHtml(product.price)}</span>
+            <span class="favorite-badge" title="You starred this item">⭐ Favorite</span>
+        `;
+        card.appendChild(footer);
+
+        container.appendChild(card);
+    });
+
+    section.style.display = 'block';
 }
 
 function renderFrequentItems(frequentItems) {
@@ -291,7 +507,7 @@ async function confirmAddQuantity() {
     const sliderQty = parseFloat(document.getElementById('quantitySlider').value);
     const quantity = customQty || sliderQty;
 
-    console.log('⚡ Adding to cart with quantity:', quantity, '-', currentProductForQuantity.name);
+    console.log('⚡ Adding to list with quantity:', quantity, '-', currentProductForQuantity.name);
 
     // INSTANT: Close modal immediately (optimistic UI)
     closeModal('quantityModal');
@@ -377,7 +593,7 @@ function quickAddToCart(product) {
             quantity: 1,
             search_term: product.search_term || 'frequent'
         });
-        showToast('✓ Added to cart');
+        showToast('✓ Added to list');
     }
 
     saveCart();
@@ -473,6 +689,10 @@ async function searchProducts() {
         return;
     }
 
+    // Reset pagination state for new search
+    currentSearchTerm = searchTerm;
+    currentSearchResults = [];
+
     showLoading(`Searching for "${searchTerm}"...`);
     document.getElementById('searchBtn').disabled = true;
 
@@ -483,7 +703,9 @@ async function searchProducts() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 search_term: searchTerm,
-                max_results: 10
+                max_results: RESULTS_PER_PAGE,
+                offset: 0,
+                store_number: parseInt(selectedStore)
             })
         });
 
@@ -519,9 +741,20 @@ async function searchProducts() {
             if (frequentSection && frequentSection.children.length > 0) {
                 frequentSection.style.display = 'block';
             }
+
+            // Hide load more button
+            document.getElementById('loadMoreBtn').style.display = 'none';
         } else {
             console.log('🎉 Displaying', products.length, 'products');
+            currentSearchResults = products;
             displayResults(products, searchTerm);
+
+            // Show/hide "Load More" button
+            if (products.length >= RESULTS_PER_PAGE) {
+                document.getElementById('loadMoreBtn').style.display = 'block';
+            } else {
+                document.getElementById('loadMoreBtn').style.display = 'none';
+            }
         }
 
     } catch (error) {
@@ -537,6 +770,142 @@ async function searchProducts() {
 document.getElementById('searchInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchProducts();
 });
+
+// Load more results (pagination)
+async function loadMoreResults() {
+    if (!currentSearchTerm) {
+        console.warn('⚠️ No active search to load more from');
+        return;
+    }
+
+    const currentOffset = currentSearchResults.length;
+    console.log(`📄 Loading more results for "${currentSearchTerm}" (offset: ${currentOffset})...`);
+
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.textContent = 'Loading...';
+
+    try {
+        const response = await auth.fetchWithAuth('/api/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                search_term: currentSearchTerm,
+                max_results: RESULTS_PER_PAGE,
+                offset: currentOffset,
+                store_number: parseInt(selectedStore)
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Load more failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const products = data.products || data;
+
+        console.log(`✅ Loaded ${products.length} more products`);
+
+        if (products.length === 0) {
+            showToast('No more results');
+            loadMoreBtn.style.display = 'none';
+            return;
+        }
+
+        // Append new products to current results
+        currentSearchResults = currentSearchResults.concat(products);
+
+        // Append to display
+        appendResults(products);
+
+        // Show/hide button based on if we got a full page
+        if (products.length < RESULTS_PER_PAGE) {
+            loadMoreBtn.style.display = 'none';
+            showToast(`Showing all ${currentSearchResults.length} results`);
+        } else {
+            loadMoreBtn.style.display = 'block';
+            loadMoreBtn.textContent = 'Load More Results';
+        }
+
+    } catch (error) {
+        console.error('❌ Load more error:', error);
+        showToast('Failed to load more results', true);
+        loadMoreBtn.textContent = 'Load More Results';
+    } finally {
+        loadMoreBtn.disabled = false;
+    }
+}
+
+function appendResults(products) {
+    console.log('📎 Appending', products.length, 'more products to results...');
+
+    const grid = document.getElementById('resultsGrid');
+
+    products.forEach((product, index) => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.onclick = () => showQuantityModal(product);
+
+        // Add star button
+        const favorited = isFavorited(product.name);
+        const starBtn = document.createElement('button');
+        starBtn.className = `btn-favorite ${favorited ? 'favorited' : ''}`;
+        starBtn.title = favorited ? 'Remove from favorites' : 'Add to favorites';
+        starBtn.onclick = (e) => toggleFavorite(product, e);
+        starBtn.innerHTML = `
+            <svg class="star-icon ${favorited ? 'filled' : ''}"
+                 width="20" height="20" viewBox="0 0 24 24"
+                 fill="${favorited ? 'currentColor' : 'none'}"
+                 stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        `;
+        card.appendChild(starBtn);
+
+        // Add image or placeholder using DOM (not innerHTML)
+        if (product.image) {
+            const img = document.createElement('img');
+            img.src = product.image;
+            img.className = 'product-image';
+            img.alt = product.name;
+            img.onerror = function() {
+                this.src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23999%27 stroke-width=%271.5%27%3E%3Ccircle cx=%279%27 cy=%2721%27 r=%271%27/%3E%3Ccircle cx=%2720%27 cy=%2721%27 r=%271%27/%3E%3Cpath d=%27M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%27/%3E%3C/svg%3E';
+            };
+            card.appendChild(img);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'product-image';
+            placeholder.style.cssText = 'display: flex; align-items: center; justify-content: center; background: var(--gray-100);';
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="60" height="60">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+            `;
+            card.appendChild(placeholder);
+        }
+
+        // Add product name
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'product-name';
+        nameDiv.textContent = product.name;
+        card.appendChild(nameDiv);
+
+        // Add product info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'product-info';
+        infoDiv.innerHTML = `
+            <span class="product-price">${escapeHtml(product.price)}</span>
+            <span class="product-aisle">${escapeHtml(product.aisle)}</span>
+        `;
+        card.appendChild(infoDiv);
+
+        grid.appendChild(card);
+    });
+
+    console.log('✅ Appended successfully');
+}
 
 function displayResults(products, searchTerm) {
     console.log('🎨 Displaying results for:', searchTerm, '- Products:', products.length);
@@ -560,35 +929,61 @@ function displayResults(products, searchTerm) {
         card.className = 'product-card';
         card.onclick = () => showQuantityModal(product);
 
-        let html = '';
+        // Add star button
+        const favorited = isFavorited(product.name);
+        const starBtn = document.createElement('button');
+        starBtn.className = `btn-favorite ${favorited ? 'favorited' : ''}`;
+        starBtn.title = favorited ? 'Remove from favorites' : 'Add to favorites';
+        starBtn.onclick = (e) => toggleFavorite(product, e);
+        starBtn.innerHTML = `
+            <svg class="star-icon ${favorited ? 'filled' : ''}"
+                 width="20" height="20" viewBox="0 0 24 24"
+                 fill="${favorited ? 'currentColor' : 'none'}"
+                 stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        `;
+        card.appendChild(starBtn);
+
+        // Add image or placeholder using DOM (not innerHTML)
         if (product.image) {
-            html += `
-                <img src="${escapeHtml(product.image)}"
-                     class="product-image"
-                     alt="${escapeHtml(product.name)}"
-                     onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23999%27 stroke-width=%271.5%27%3E%3Ccircle cx=%279%27 cy=%2721%27 r=%271%27/%3E%3Ccircle cx=%2720%27 cy=%2721%27 r=%271%27/%3E%3Cpath d=%27M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%27/%3E%3C/svg%3E';">
-            `;
+            const img = document.createElement('img');
+            img.src = product.image;
+            img.className = 'product-image';
+            img.alt = product.name;
+            img.onerror = function() {
+                this.src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23999%27 stroke-width=%271.5%27%3E%3Ccircle cx=%279%27 cy=%2721%27 r=%271%27/%3E%3Ccircle cx=%2720%27 cy=%2721%27 r=%271%27/%3E%3Cpath d=%27M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6%27/%3E%3C/svg%3E';
+            };
+            card.appendChild(img);
         } else {
-            html += `
-                <div class="product-image" style="display: flex; align-items: center; justify-content: center; background: var(--gray-100);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="60" height="60">
-                        <circle cx="9" cy="21" r="1"></circle>
-                        <circle cx="20" cy="21" r="1"></circle>
-                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                    </svg>
-                </div>
+            const placeholder = document.createElement('div');
+            placeholder.className = 'product-image';
+            placeholder.style.cssText = 'display: flex; align-items: center; justify-content: center; background: var(--gray-100);';
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="60" height="60">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
             `;
+            card.appendChild(placeholder);
         }
 
-        html += `
-            <div class="product-name">${escapeHtml(product.name)}</div>
-            <div class="product-info">
-                <span class="product-price">${escapeHtml(product.price)}</span>
-                <span class="product-aisle">${escapeHtml(product.aisle)}</span>
-            </div>
-        `;
+        // Add product name
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'product-name';
+        nameDiv.textContent = product.name;
+        card.appendChild(nameDiv);
 
-        card.innerHTML = html;
+        // Add product info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'product-info';
+        infoDiv.innerHTML = `
+            <span class="product-price">${escapeHtml(product.price)}</span>
+            <span class="product-aisle">${escapeHtml(product.aisle)}</span>
+        `;
+        card.appendChild(infoDiv);
+
         grid.appendChild(card);
     });
 
@@ -596,7 +991,7 @@ function displayResults(products, searchTerm) {
 }
 
 function addToCart(product, searchTerm) {
-    console.log('🛒 Adding to cart:', product.name);
+    console.log('🛒 Adding to list:', product.name);
 
     // Check if item already in cart
     const existing = cart.find(item => item.name === product.name);
@@ -611,7 +1006,7 @@ function addToCart(product, searchTerm) {
             search_term: searchTerm
         });
         console.log('  ➕ Added new item to cart');
-        showToast('✓ Added to cart');
+        showToast('✓ Added to list');
     }
 
     console.log('🛒 Cart now has', cart.length, 'unique items');
@@ -649,9 +1044,10 @@ function renderCart() {
 
     if (cart.length === 0) {
         console.log('  📭 Cart is empty');
-        cartItems.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">Your cart is empty</p><p class="text-xs">Start searching to add items!</p></div>';
+        cartItems.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">Your list is empty</p><p class="text-xs">Start searching to add items!</p></div>';
         cartCount.textContent = '0';
         document.getElementById('cartTotals').style.display = 'none';
+        document.getElementById('exportBtn').style.display = 'none';
         document.getElementById('printListBtn').style.display = 'none';
         document.getElementById('saveCustomBtn').style.display = 'none';
         return;
@@ -702,6 +1098,7 @@ function renderCart() {
     document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
     document.getElementById('total').textContent = `$${total.toFixed(2)}`;
     document.getElementById('cartTotals').style.display = 'block';
+    document.getElementById('exportBtn').style.display = 'block';
     document.getElementById('printListBtn').style.display = 'block';
     document.getElementById('saveCustomBtn').style.display = 'block';
 
@@ -1901,4 +2298,151 @@ async function confirmDeleteRecipe() {
 
 function closeRecipes() {
     closeModal('recipesModal');
+}
+
+// ====== Export to Text Functions ======
+
+function groupByAisle(items) {
+    const grouped = {};
+    items.forEach(item => {
+        const aisle = item.aisle || 'Other';
+        if (!grouped[aisle]) {
+            grouped[aisle] = [];
+        }
+        grouped[aisle].push(item);
+    });
+    return grouped;
+}
+
+function calculateTotal() {
+    let subtotal = 0;
+    cart.forEach(item => {
+        const price = typeof item.price === 'string'
+            ? parseFloat(item.price.replace('$', ''))
+            : parseFloat(item.price);
+        subtotal += price * item.quantity;
+    });
+    const tax = subtotal * NC_TAX_RATE;
+    return (subtotal + tax).toFixed(2);
+}
+
+function exportToText() {
+    if (cart.length === 0) {
+        showToast('Your list is empty', true);
+        return;
+    }
+
+    console.log('📋 Exporting list to text...');
+
+    // Group items by aisle
+    const grouped = groupByAisle(cart);
+
+    // Build text format
+    let text = `Wegmans Shopping List - ${getTodaysListName()}\n\n`;
+
+    // Add items by aisle
+    for (const [aisle, items] of Object.entries(grouped)) {
+        text += `${aisle.toUpperCase()}\n`;
+        items.forEach(item => {
+            const displayName = item.product_name || item.name;
+            const displayPrice = typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price;
+
+            text += `* ${displayName} - ${displayPrice}`;
+            if (item.quantity > 1) {
+                text += ` (qty: ${item.quantity})`;
+            }
+            text += '\n';
+        });
+        text += '\n';
+    }
+
+    // Add total
+    text += `TOTAL: $${calculateTotal()}\n`;
+    text += '---\n';
+    text += 'Generated by Wegmans Shopping List Builder\n';
+    text += 'https://wegmans-shopping.onrender.com';
+
+    // Copy to clipboard with fallback
+    copyToClipboard(text);
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Modern clipboard API
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                console.log('✅ Copied to clipboard');
+                showToast('✓ Copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopyToClipboard(text);
+            });
+    } else {
+        // Fallback for older browsers
+        fallbackCopyToClipboard(text);
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    // Create temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+
+    try {
+        textarea.select();
+        const successful = document.execCommand('copy');
+
+        if (successful) {
+            console.log('✅ Copied to clipboard (fallback method)');
+            showToast('✓ Copied to clipboard!');
+        } else {
+            console.error('Fallback copy failed');
+            showToast('Copy failed - please try again', true);
+        }
+    } catch (err) {
+        console.error('Fallback copy error:', err);
+        showToast('Copy not supported in this browser', true);
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
+// ====== Remove Favorite Confirmation ======
+
+async function confirmRemoveFavorite() {
+    closeModal('removeFavoriteModal');
+
+    const data = window.productToUnfavorite;
+    if (!data) return;
+
+    const { product, starBtn, starIcon } = data;
+
+    try {
+        const response = await auth.fetchWithAuth(`/api/favorites/${encodeURIComponent(product.name)}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            userFavorites.delete(product.name);
+            showToast('Removed from favorites');
+
+            // Update UI
+            if (starBtn) {
+                starBtn.classList.remove('favorited');
+                if (starIcon) starIcon.classList.remove('filled');
+            }
+
+            // Reload frequent items to update display
+            await loadFrequentItems();
+        }
+    } catch (error) {
+        console.error('Failed to remove favorite:', error);
+        showToast('Failed to remove favorite', true);
+    }
+
+    window.productToUnfavorite = null;
 }

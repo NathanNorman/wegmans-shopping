@@ -331,15 +331,99 @@ def update_frequent_items(user_id: str):
         """, (user_id, user_id))
 
 def get_frequent_items(user_id: str, limit: int = 20) -> List[Dict]:
-    """Get most frequently purchased items for specific user"""
+    """
+    Get auto-learned frequently purchased items (excludes manual favorites)
+
+    Only returns items where:
+    - is_manual = FALSE (not manually starred)
+    - purchase_count >= 2 (appeared in 2+ lists)
+    """
     with get_db() as cursor:
         cursor.execute("""
             SELECT * FROM frequent_items
             WHERE user_id = %s
+              AND is_manual = FALSE
+              AND purchase_count >= 2
             ORDER BY purchase_count DESC, last_purchased DESC
             LIMIT %s
         """, (user_id, limit))
         return cursor.fetchall()
+
+# === Favorites Operations ===
+
+def add_favorite(user_id: str, product_name: str, price: str, aisle: str, image_url: str, is_sold_by_weight: bool = False):
+    """
+    Add item to favorites (manual)
+
+    Sets is_manual=TRUE and purchase_count=999 to ensure it appears at top of frequent items
+    """
+    with get_db() as cursor:
+        # Parse price (remove $ if present)
+        price_float = float(price.replace('$', '')) if isinstance(price, str) and price.startswith('$') else float(price)
+
+        cursor.execute("""
+            INSERT INTO frequent_items
+                (user_id, product_name, price, aisle, image_url, purchase_count, is_manual, is_sold_by_weight, last_purchased)
+            VALUES (%s, %s, %s, %s, %s, 999, TRUE, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id, product_name)
+            DO UPDATE SET
+                is_manual = TRUE,
+                purchase_count = GREATEST(frequent_items.purchase_count, 999),
+                last_purchased = CURRENT_TIMESTAMP,
+                price = EXCLUDED.price,
+                aisle = EXCLUDED.aisle,
+                image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), frequent_items.image_url),
+                is_sold_by_weight = EXCLUDED.is_sold_by_weight
+        """, (user_id, product_name, price_float, aisle, image_url, is_sold_by_weight))
+
+def remove_favorite(user_id: str, product_name: str):
+    """
+    Remove manual favorite (keep if auto-generated with count >= 2)
+
+    Sets is_manual=FALSE. If item is not auto-frequent (count < 2), deletes it entirely.
+    """
+    with get_db() as cursor:
+        # First, update is_manual to FALSE
+        cursor.execute("""
+            UPDATE frequent_items
+            SET is_manual = FALSE,
+                purchase_count = CASE
+                    WHEN purchase_count >= 999 THEN 1  -- Reset manual favorites to 1
+                    ELSE purchase_count  -- Keep actual purchase count
+                END
+            WHERE user_id = %s AND product_name = %s
+        """, (user_id, product_name))
+
+        # Then delete if it's not actually frequent (count < 2 and not manual)
+        cursor.execute("""
+            DELETE FROM frequent_items
+            WHERE user_id = %s
+              AND product_name = %s
+              AND purchase_count < 2
+              AND is_manual = FALSE
+        """, (user_id, product_name))
+
+def get_favorites(user_id: str) -> List[Dict]:
+    """Get all manually favorited items for user"""
+    with get_db() as cursor:
+        cursor.execute("""
+            SELECT * FROM frequent_items
+            WHERE user_id = %s AND is_manual = TRUE
+            ORDER BY last_purchased DESC
+        """, (user_id,))
+        return cursor.fetchall()
+
+def check_if_favorited(user_id: str, product_name: str) -> bool:
+    """Check if a specific product is manually favorited"""
+    with get_db() as cursor:
+        cursor.execute("""
+            SELECT EXISTS(
+                SELECT 1 FROM frequent_items
+                WHERE user_id = %s AND product_name = %s AND is_manual = TRUE
+            )
+        """, (user_id, product_name))
+        result = cursor.fetchone()
+        return result['exists'] if result else False
 
 # === Recipe Operations ===
 

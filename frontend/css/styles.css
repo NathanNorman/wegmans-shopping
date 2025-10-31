@@ -555,6 +555,55 @@ body {
     background: var(--info-blue-dark);
 }
 
+.btn-export {
+    background: var(--info-blue);
+    color: var(--white);
+    font-weight: var(--font-weight-semibold);
+}
+
+.btn-export:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-load-more {
+    width: 100%;
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--white);
+    color: var(--primary-red);
+    border: 2px solid var(--primary-red);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-load-more:hover {
+    background: var(--primary-red);
+    color: var(--white);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-load-more:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-load-more svg {
+    transition: transform 0.2s ease;
+}
+
+.btn-load-more:hover svg {
+    transform: translateY(2px);
+}
+
 .btn-print {
     background: var(--primary-red);
     color: var(--white);
@@ -1887,5 +1936,178 @@ input:focus-visible {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
+    }
+}
+
+/* ==================================================================
+ * FAVORITES SECTION STYLES
+ * ================================================================== */
+
+/* Favorites section - matches frequent section style */
+.favorites-section {
+    background: var(--bg-card);
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--space-5);
+    border: 2px solid #ffd700;
+}
+
+.favorites-section h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+}
+
+.favorites-section h2 svg {
+    color: #ffd700;
+    fill: #ffd700;
+}
+
+.favorite-items {
+    display: flex;
+    gap: var(--space-4);
+    overflow-x: auto;
+    padding-bottom: var(--space-3);
+    scroll-behavior: smooth;
+}
+
+.favorite-items::-webkit-scrollbar {
+    height: 8px;
+}
+
+.favorite-items::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: var(--radius-full);
+}
+
+.favorite-items::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: var(--radius-full);
+}
+
+.favorite-items::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-600);
+}
+
+.favorite-item-card {
+    flex-shrink: 0;
+    width: 200px;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Smaller star button for favorites/frequent items cards */
+.btn-favorite-small {
+    width: 28px;
+    height: 28px;
+    top: 4px;
+    right: 4px;
+}
+
+.btn-favorite-small svg {
+    width: 16px;
+    height: 16px;
+}
+
+.favorite-badge {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+/* ==================================================================
+ * FAVORITES BUTTON STYLES
+ * ================================================================== */
+
+/* Star favorite button - badge in top-right per user diagram */
+.btn-favorite {
+    position: absolute;
+    top: 26px;   /* 1px up from 27px */
+    right: 34px; /* 1px left from 33px */
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-favorite:hover {
+    border-color: #ffd700;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3);
+}
+
+.btn-favorite:active {
+    transform: translateY(0);
+}
+
+/* Star icon */
+.star-icon {
+    width: 18px;
+    height: 18px;
+    color: #d1d5db;
+    transition: all 0.2s ease;
+}
+
+.btn-favorite:hover .star-icon {
+    color: #ffd700;
+}
+
+/* Favorited state - gold fill with gold border */
+.btn-favorite.favorited {
+    background: #fffbeb;
+    border-color: #ffd700;
+}
+
+.star-icon.filled {
+    color: #ffd700;
+    fill: #ffd700;
+}
+
+/* Pulse animation on favorite */
+@keyframes favoritePulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.btn-favorite.favorited .star-icon {
+    animation: favoritePulse 0.3s ease;
+}
+
+/* Mobile styles */
+@media (max-width: 767px) {
+    .btn-favorite {
+        width: 32px;
+        height: 32px;
+        top: 6px;
+        right: 6px;
+    }
+
+    .star-icon {
+        width: 18px;
+        height: 18px;
     }
 }
