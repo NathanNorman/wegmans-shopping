@@ -2573,6 +2573,28 @@ async function confirmSaveRecipe() {
         return;
     }
 
+    // Check if recipe with this name already exists
+    try {
+        const response = await auth.fetchWithAuth('/api/recipes');
+        const data = await response.json();
+        const recipes = data.recipes || [];
+
+        const existingRecipe = recipes.find(r => r.name.toLowerCase() === name.toLowerCase());
+
+        if (existingRecipe) {
+            // Recipe name already exists - show overwrite confirmation
+            showRecipeOverwriteConfirmation(name, description, existingRecipe.id);
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking recipes:', error);
+    }
+
+    // No duplicate - proceed with save
+    await saveRecipeNow(name, description);
+}
+
+async function saveRecipeNow(name, description) {
     // Clear form and close modal immediately (optimistic UI)
     document.getElementById('recipeNameInput').value = '';
     document.getElementById('recipeDescriptionInput').value = '';
@@ -2596,6 +2618,55 @@ async function confirmSaveRecipe() {
     } catch (error) {
         console.error('Save recipe error:', error);
         showToast('Failed to save recipe', true);
+    }
+}
+
+// Recipe overwrite confirmation state
+let pendingRecipeOverwrite = null;
+
+function showRecipeOverwriteConfirmation(name, description, existingRecipeId) {
+    pendingRecipeOverwrite = { name, description, existingRecipeId };
+
+    document.getElementById('overwriteRecipeName').textContent = name;
+    closeModal('saveRecipeModal');
+    openModal('recipeOverwriteModal');
+}
+
+function closeRecipeOverwriteModal() {
+    closeModal('recipeOverwriteModal');
+
+    // Reopen save recipe modal with preserved values
+    if (pendingRecipeOverwrite) {
+        document.getElementById('recipeNameInput').value = pendingRecipeOverwrite.name;
+        document.getElementById('recipeDescriptionInput').value = pendingRecipeOverwrite.description;
+        openModal('saveRecipeModal');
+    }
+
+    pendingRecipeOverwrite = null;
+}
+
+async function confirmOverwriteRecipe() {
+    if (!pendingRecipeOverwrite) return;
+
+    const { name, description, existingRecipeId } = pendingRecipeOverwrite;
+
+    closeModal('recipeOverwriteModal');
+    showToast(`✓ Overwriting recipe "${name}"...`);
+
+    try {
+        // Delete the old recipe first
+        await auth.fetchWithAuth(`/api/recipes/${existingRecipeId}`, {
+            method: 'DELETE'
+        });
+
+        // Now save the new one
+        await saveRecipeNow(name, description);
+
+        pendingRecipeOverwrite = null;
+    } catch (error) {
+        console.error('Overwrite recipe error:', error);
+        showToast('Failed to overwrite recipe', true);
+        pendingRecipeOverwrite = null;
     }
 }
 

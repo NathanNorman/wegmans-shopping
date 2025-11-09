@@ -517,6 +517,34 @@
         </div>
     </div>
 
+    <!-- Recipe Overwrite Confirmation Modal -->
+    <div class="delete-modal" id="recipeOverwriteModal">
+        <div class="delete-modal-content">
+            <div class="delete-modal-icon" style="background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <h3>Duplicate recipe name</h3>
+            <div class="delete-modal-message">
+                A recipe named "<strong id="overwriteRecipeName"></strong>" already exists.
+                Do you want to replace it with your current cart?
+            </div>
+            <div class="delete-modal-actions">
+                <button class="btn-cancel-delete" onclick="closeRecipeOverwriteModal()">Cancel</button>
+                <button class="btn-confirm-delete" onclick="confirmOverwriteRecipe()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    Yes, Replace
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Final List Modal -->
     <div class="final-list-modal" id="finalListModal">
         <div class="final-list-content">
