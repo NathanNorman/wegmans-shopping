@@ -895,10 +895,10 @@ function closeQuantityModal() {
 async function confirmAddQuantity() {
     if (!currentProductForQuantity) return;
 
-    // Get quantity from slider or custom input
+    // Get quantity from custom input or from the display (which shows the correct value)
     const customQty = parseFloat(document.getElementById('customQuantityInput').value);
-    const sliderQty = parseFloat(document.getElementById('quantitySlider').value);
-    const quantity = customQty || sliderQty;
+    const displayQty = parseFloat(document.getElementById('quantityDisplay').textContent);
+    const quantity = customQty || displayQty;
 
     console.log('⚡ Adding to list with quantity:', quantity, '-', currentProductForQuantity.name);
 
