@@ -2454,15 +2454,44 @@ async function saveCustomListNow() {
 
 let currentRecipeItems = []; // For interactive add flow
 let currentRecipeItemIndex = 0;
+let recipesLoading = false; // Prevent double-clicks
 
 async function showRecipes() {
+    console.log('📖 showRecipes() called - Opening recipes modal...');
+
+    // Prevent double-clicks while loading
+    if (recipesLoading) {
+        console.log('⏳ Already loading recipes, ignoring duplicate call');
+        return;
+    }
+    recipesLoading = true;
+
     const container = document.getElementById('recipesContainer');
 
+    // Check if container exists
+    if (!container) {
+        console.error('❌ recipesContainer element not found in DOM');
+        showToast('Error: Recipes container not found', true);
+        recipesLoading = false;
+        return;
+    }
+
+    // Show loading state immediately
+    container.innerHTML = '<div class="empty-cart"><div class="emoji">⏳</div><p style="font-weight: 600; color: var(--text-primary);">Loading recipes...</p></div>';
+    openModal('recipesModal');
+
     try {
+        console.log('📡 Fetching recipes from API...');
         // Fetch recipes from database API
         const response = await auth.fetchWithAuth('/api/recipes');
+
+        if (!response.ok) {
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
         const recipes = data.recipes || [];
+        console.log(`✅ Loaded ${recipes.length} recipes`);
 
         if (recipes.length === 0) {
             container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No recipes yet</p><p class="text-xs">Save your cart as a recipe or create a new one!</p></div>';
@@ -2474,9 +2503,28 @@ async function showRecipes() {
             container.innerHTML = html;
         }
 
-        openModal('recipesModal');
+        recipesLoading = false;
     } catch (error) {
-        console.error('Error loading recipes:', error);
+        console.error('❌ Error loading recipes:', error);
+        console.error('Error details:', error.message, error.stack);
+
+        // Show error state in modal (don't hide it)
+        container.innerHTML = `
+            <div class="empty-cart">
+                <div class="emoji">⚠️</div>
+                <p style="font-weight: 600; color: var(--error-red); margin-bottom: var(--space-2);">
+                    Failed to load recipes
+                </p>
+                <p class="text-xs" style="color: var(--text-secondary);">
+                    ${error.message || 'Network error'}
+                </p>
+                <button onclick="showRecipes()" style="margin-top: var(--space-4); padding: var(--space-2) var(--space-4); background: var(--primary-red); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;">
+                    Retry
+                </button>
+            </div>
+        `;
+        showToast('Failed to load recipes. Check console for details.', true);
+        recipesLoading = false;
     }
 }
 
