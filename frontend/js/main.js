@@ -2581,13 +2581,12 @@ function renderRecipeCard(recipe) {
                     </svg>
                     Add All
                 </button>
-                <button class="btn-load-all" onclick="startInteractiveAdd(${recipe.id})">
+                <button class="btn-load-all" onclick="openEditRecipeEditor(${recipe.id}, '${escapeHtml(recipe.name).replace(/'/g, "\\'")}')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="16"></line>
-                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
-                    Interactive Add
+                    Edit
                 </button>
                 <button class="btn-delete-list" onclick="deleteRecipe(${recipe.id})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
@@ -3021,4 +3020,1024 @@ async function confirmRemoveFavorite() {
     }
 
     window.productToUnfavorite = null;
+}
+// This file contains all the recipe import JavaScript functions
+// These will be appended to main.js
+
+// ====== RECIPE EDITOR (Import/Create/Edit) ======
+
+// Unified recipe editor state
+let recipeEditorData = {
+    mode: 'import',          // 'import', 'create', 'edit'
+    recipeId: null,          // For edit mode
+    recipeName: '',          // For edit mode
+    ingredients: [],         // Parsed/loaded/empty ingredients
+    searchResults: [],       // Wegmans matches
+    selections: {},          // User selections: {ingredientName: productObject}
+    skipped: new Set()       // Skipped ingredient names
+};
+
+// State for per-ingredient search
+let currentItemSearchIndex = null;
+let currentSearchIngredientName = null;
+let searchResultsCache = []; // Cache search results to avoid JSON encoding issues
+
+function showImportRecipeModal() {
+    console.log('📥 Opening import recipe modal');
+    document.getElementById('importRecipeTextarea').value = '';
+    openModal('importRecipeModal');
+}
+
+async function startRecipeImport() {
+    const text = document.getElementById('importRecipeTextarea').value.trim();
+
+    if (!text) {
+        showToast('Please paste some recipe text', true);
+        return;
+    }
+
+    console.log('📥 Starting recipe import...');
+    console.log('Text length:', text.length, 'characters');
+
+    closeModal('importRecipeModal');
+    showToast('⏳ Parsing recipe...');
+
+    try {
+        // Step 1: Parse recipe text
+        console.log('📡 Calling parser API...');
+        const parseResponse = await auth.fetchWithAuth('/api/recipes/parse', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ text })
+        });
+
+        if (!parseResponse.ok) {
+            throw new Error(`Parser failed: ${parseResponse.status}`);
+        }
+
+        const parseData = await parseResponse.json();
+        const ingredients = parseData.ingredients || [];
+
+        console.log(`✅ Parsed ${ingredients.length} ingredients`);
+
+        if (ingredients.length === 0) {
+            showToast('No ingredients found in text. Try a different format.', true);
+            return;
+        }
+
+        // Step 2: Search Wegmans for each ingredient
+        showToast('🔍 Searching Wegmans for matches...');
+        console.log('📡 Calling batch search API...');
+
+        const ingredientNames = ingredients.map(i => i.name);
+        const searchResponse = await auth.fetchWithAuth('/api/recipes/import-search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                ingredients: ingredientNames,
+                max_results_per_item: 3,
+                store_number: parseInt(selectedStore)
+            })
+        });
+
+        if (!searchResponse.ok) {
+            throw new Error(`Search failed: ${searchResponse.status}`);
+        }
+
+        const searchData = await searchResponse.json();
+        const results = searchData.results || [];
+
+        console.log(`✅ Found matches for ingredients`);
+
+        // Step 3: Show review modal
+        showReviewImportModal(ingredients, results);
+
+    } catch (error) {
+        console.error('❌ Import error:', error);
+        showToast('Failed to import recipe. Check console for details.', true);
+    }
+}
+
+function showReviewImportModal(ingredients, searchResults) {
+    console.log('📋 Showing review modal for', ingredients.length, 'ingredients');
+
+    // Use the unified recipe editor in import mode
+    openRecipeEditor('import', ingredients, searchResults);
+}
+
+function renderImportReviewList() {
+    // Redirect to new unified function
+    renderRecipeEditor();
+}
+
+function renderImportMatchCard(product, ingredientName, selectedProduct) {
+    // Redirect to new unified function
+    return renderIngredientMatchCard(product, ingredientName, selectedProduct);
+}
+
+function selectImportMatch(ingredientName, product) {
+    // Redirect to new unified function
+    selectIngredientProduct(ingredientName, product);
+}
+
+function toggleSkipItem(ingredientName) {
+    if (recipeEditorData.skipped.has(ingredientName)) {
+        recipeEditorData.skipped.delete(ingredientName);
+    } else {
+        recipeEditorData.skipped.add(ingredientName);
+        // Clear selection if was selected
+        delete recipeEditorData.selections[ingredientName];
+    }
+
+    renderImportReviewList();
+    updateImportCount();
+}
+
+function updateImportCount() {
+    // Redirect to new unified function
+    updateEditorCount();
+}
+
+// ====== PER-ITEM SEARCH MODAL ======
+
+function openItemSearchModal(ingredientName, ingredientIndex) {
+    // Redirect to new unified function
+    openIngredientSearchModal(ingredientName, ingredientIndex);
+}
+
+function closeItemSearchModal() {
+    // Redirect to new unified function
+    closeIngredientSearchModal();
+}
+
+async function searchForSubstitute() {
+    // Redirect to new unified function
+    await searchForIngredient();
+}
+
+function selectSubstituteProduct(product) {
+    // Redirect to new unified function
+    selectIngredientFromSearch(product);
+}
+
+function skipCurrentItem() {
+    // Redirect to new unified function
+    skipCurrentIngredient();
+}
+
+// ====== BATCH ADD TO CART ======
+
+async function confirmImportToCart() {
+    // Redirect to new unified function
+    await addRecipeToList();
+}
+
+// ====== SAVE IMPORT AS RECIPE ======
+
+async function saveImportAsRecipe() {
+    // Redirect to new unified function
+    await createNewRecipeFromEditor();
+}
+
+// Old saveImportAsRecipe implementation (now in createNewRecipeFromEditor)
+async function saveImportAsRecipe_OLD() {
+    const selectedCount = Object.keys(recipeEditorData.selections).length;
+
+    if (selectedCount === 0) {
+        showToast('Please select at least one item', true);
+        return;
+    }
+
+    console.log(`📖 Saving ${selectedCount} items as recipe...`);
+
+    // Prompt for recipe name
+    const name = prompt('Enter recipe name:');
+
+    if (!name || !name.trim()) {
+        showToast('Recipe name required', true);
+        return;
+    }
+
+    closeModal('importReviewModal');
+    showToast('Saving recipe...');
+
+    try {
+        // Step 1: Create new recipe
+        const createResponse = await auth.fetchWithAuth('/api/recipes/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: name.trim(),
+                description: `Imported recipe with ${selectedCount} ingredients`
+            })
+        });
+
+        if (!createResponse.ok) {
+            throw new Error('Failed to create recipe');
+        }
+
+        const createData = await createResponse.json();
+        const recipeId = createData.recipe_id;
+
+        console.log(`✅ Created recipe: ${recipeId}`);
+
+        // Step 2: Add all selected items to the recipe
+        let successCount = 0;
+        const selectedProducts = Object.values(recipeEditorData.selections);
+
+        for (const product of selectedProducts) {
+            try {
+                const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: product.name,
+                        price: product.price,
+                        quantity: 1,
+                        aisle: product.aisle,
+                        image: product.image,
+                        search_term: 'recipe-import',
+                        is_sold_by_weight: product.is_sold_by_weight || false,
+                        unit_price: product.unit_price || null,
+                        sell_by_unit: product.sell_by_unit || 'Each'
+                    })
+                });
+
+                if (response.ok) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Failed to add item to recipe:', error);
+            }
+        }
+
+        const skippedCount = recipeEditorData.ingredients.length - selectedCount;
+        showToast(`✓ Recipe "${name}" saved with ${successCount} item${successCount === 1 ? '' : 's'}`);
+        console.log(`✅ Recipe saved: ${successCount} items`);
+
+        // Clear state
+        recipeEditorData = {
+            ingredients: [],
+            searchResults: [],
+            selections: {},
+            skipped: new Set()
+        };
+
+    } catch (error) {
+        console.error('❌ Save recipe error:', error);
+        showToast('Failed to save recipe. Try again.', true);
+    }
+}
+// RECIPE EDITOR REFACTOR - New/Updated Functions
+// This file contains the refactored recipe editor functions
+
+// ====== CORE RECIPE EDITOR ======
+
+function openRecipeEditor(mode, ingredients = [], searchResults = [], recipeId = null, recipeName = '') {
+    console.log(`📝 Opening recipe editor in ${mode} mode`);
+
+    // Set mode and data
+    recipeEditorData.mode = mode;
+    recipeEditorData.recipeId = recipeId;
+    recipeEditorData.recipeName = recipeName;
+    recipeEditorData.ingredients = ingredients;
+    recipeEditorData.searchResults = searchResults;
+    recipeEditorData.selections = {};
+    recipeEditorData.skipped = new Set();
+
+    // Pre-select products for edit mode
+    if (mode === 'edit') {
+        ingredients.forEach(ing => {
+            if (ing.product) {
+                recipeEditorData.selections[ing.name] = ing.product;
+            }
+        });
+    }
+
+    updateEditorUI();
+    renderRecipeEditor();
+    updateEditorCount();
+    openModal('recipeEditorModal');
+}
+
+function updateEditorUI() {
+    const mode = recipeEditorData.mode;
+
+    // Update title
+    const titleEl = document.getElementById('recipeEditorTitle');
+    const subtitleEl = document.getElementById('recipeEditorSubtitle');
+    const addBarEl = document.getElementById('editorAddIngredientBar');
+    const addToListBtn = document.getElementById('editorAddToListBtn');
+    const saveBtn = document.getElementById('editorSaveBtn');
+    const saveBtnText = document.getElementById('editorSaveBtnText');
+
+    if (mode === 'import') {
+        titleEl.textContent = 'Review Recipe Matches';
+        subtitleEl.textContent = 'Review the matches we found. Click a product to select it, or use Search/Skip for each ingredient.';
+        addBarEl.style.display = 'none';
+        addToListBtn.style.display = 'flex';
+        saveBtnText.textContent = 'Save as Recipe';
+    } else if (mode === 'create') {
+        titleEl.textContent = 'Create New Recipe';
+        subtitleEl.textContent = 'Search and add ingredients to build your recipe.';
+        addBarEl.style.display = 'block';
+        addToListBtn.style.display = 'none';
+        saveBtnText.textContent = 'Save Recipe';
+    } else if (mode === 'edit') {
+        titleEl.textContent = `Edit Recipe: ${recipeEditorData.recipeName}`;
+        subtitleEl.textContent = 'Add, remove, or replace ingredients in your recipe.';
+        addBarEl.style.display = 'block';
+        addToListBtn.style.display = 'none';
+        saveBtnText.textContent = 'Save Changes';
+    }
+}
+
+function renderRecipeEditor() {
+    const container = document.getElementById('recipeEditorList');
+    const mode = recipeEditorData.mode;
+    let html = '';
+
+    if (recipeEditorData.ingredients.length === 0) {
+        // Empty state for create mode
+        html = `
+            <div style="text-align: center; padding: var(--space-8); color: var(--text-secondary);">
+                <p style="font-size: 18px; margin-bottom: var(--space-2);">No ingredients yet</p>
+                <p>Click "Add Ingredient" above to start building your recipe</p>
+            </div>
+        `;
+    } else {
+        recipeEditorData.ingredients.forEach((ingredient, index) => {
+            const searchResult = recipeEditorData.searchResults.find(r => r.ingredient === ingredient.name);
+            const matches = searchResult?.matches || [];
+            const hasMatches = matches.length > 0;
+            const isSkipped = recipeEditorData.skipped.has(ingredient.name);
+            const selectedProduct = recipeEditorData.selections[ingredient.name];
+
+            html += `
+                <div class="import-ingredient-item ${isSkipped ? 'skipped' : ''}" data-index="${index}">
+                    <!-- Header with original text -->
+                    <div class="import-ingredient-header">
+                        <div>
+                            <strong>${escapeHtml(ingredient.original || ingredient.name)}</strong>
+                            ${ingredient.optional ? '<span class="optional-badge">Optional</span>' : ''}
+                        </div>
+                        <div style="display: flex; gap: var(--space-2); align-items: center;">
+                            ${mode !== 'import' ? `
+                                <button class="btn-remove-ingredient" onclick="removeIngredientFromEditor(${index})" style="padding: 4px 8px; background: var(--error-red); color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    × Remove
+                                </button>
+                            ` : ''}
+                            <label class="skip-checkbox">
+                                <input type="checkbox"
+                                       ${isSkipped ? 'checked' : ''}
+                                       onchange="toggleSkipItem('${escapeHtml(ingredient.name)}')">
+                                <span>Skip</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    ${!isSkipped ? `
+                        ${hasMatches ? `
+                            <!-- Wegmans matches -->
+                            <div class="import-matches-grid">
+                                ${matches.map(product => renderIngredientMatchCard(product, ingredient.name, selectedProduct)).join('')}
+                            </div>
+                        ` : `
+                            <!-- No matches found -->
+                            <div class="import-no-matches">
+                                <span>⚠️ No matches found</span>
+                            </div>
+                        `}
+
+                        <!-- Manual search button -->
+                        <button class="btn-search-substitute" onclick="openIngredientSearchModal('${escapeHtml(ingredient.name)}', ${index})">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            Search for substitute
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+function renderIngredientMatchCard(product, ingredientName, selectedProduct) {
+    // Compare products by name + price + image to handle duplicates
+    const isSelected = selectedProduct &&
+                      selectedProduct.name === product.name &&
+                      selectedProduct.price === product.price &&
+                      selectedProduct.image === product.image;
+
+    // Add weight badge if applicable
+    const weightBadge = product.is_sold_by_weight
+        ? `<div class="weight-badge-tiny">⚖️ ${product.sell_by_unit || 'lb'}</div>`
+        : '';
+
+    return `
+        <div class="import-match-card ${isSelected ? 'selected' : ''}"
+             onclick='selectIngredientProduct("${escapeHtml(ingredientName)}", JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(product))}"))  )'>
+            <div class="import-match-image">
+                <img src="${product.image || ''}" alt="${escapeHtml(product.name)}">
+                ${weightBadge}
+                ${isSelected ? '<div class="selected-badge">✓</div>' : ''}
+            </div>
+            <div class="import-match-name">${escapeHtml(product.name)}</div>
+            <div class="import-match-price">${escapeHtml(product.price)}</div>
+            ${product.unit_price ? `<div class="import-match-unit">${escapeHtml(product.unit_price)}</div>` : ''}
+        </div>
+    `;
+}
+
+function selectIngredientProduct(ingredientName, product) {
+    console.log('✓ Selected:', product.name, 'for', ingredientName);
+
+    // Toggle selection
+    if (recipeEditorData.selections[ingredientName]?.name === product.name &&
+        recipeEditorData.selections[ingredientName]?.price === product.price) {
+        // Deselect
+        delete recipeEditorData.selections[ingredientName];
+    } else {
+        // Select
+        recipeEditorData.selections[ingredientName] = product;
+
+        // Auto-uncheck skip if was skipped
+        if (recipeEditorData.skipped.has(ingredientName)) {
+            recipeEditorData.skipped.delete(ingredientName);
+        }
+    }
+
+    renderRecipeEditor();
+    updateEditorCount();
+}
+
+function updateEditorCount() {
+    const selectedCount = Object.keys(recipeEditorData.selections).length;
+    document.getElementById('editorSelectedCount').textContent = selectedCount;
+    document.getElementById('editorAddToListCount').textContent = selectedCount;
+
+    // Disable both buttons if nothing selected
+    const addBtn = document.getElementById('editorAddToListBtn');
+    const saveBtn = document.getElementById('editorSaveBtn');
+
+    if (addBtn) {
+        addBtn.disabled = selectedCount === 0;
+        addBtn.style.opacity = selectedCount === 0 ? '0.5' : '1';
+        addBtn.style.cursor = selectedCount === 0 ? 'not-allowed' : 'pointer';
+    }
+
+    saveBtn.disabled = selectedCount === 0;
+    saveBtn.style.opacity = selectedCount === 0 ? '0.5' : '1';
+    saveBtn.style.cursor = selectedCount === 0 ? 'not-allowed' : 'pointer';
+}
+
+// ====== CREATE MODE ======
+
+function openCreateRecipeEditor() {
+    console.log('📝 Opening create recipe editor');
+    closeRecipes(); // Close the recipes modal
+    openRecipeEditor('create', [], []);
+}
+
+// ====== EDIT MODE ======
+
+async function openEditRecipeEditor(recipeId, recipeName) {
+    console.log(`📝 Loading recipe ${recipeId} for editing`);
+
+    closeRecipes(); // Close the recipes modal
+    showToast('Loading recipe...');
+
+    try {
+        // Fetch recipe items
+        const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}/items`);
+
+        if (!response.ok) {
+            throw new Error('Failed to load recipe');
+        }
+
+        const data = await response.json();
+        const items = data.items || [];
+
+        // Convert recipe items to editor format (map database fields correctly)
+        const ingredients = items.map(item => {
+            const productData = {
+                name: item.product_name,
+                price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                aisle: item.aisle,
+                image: item.image_url,
+                is_sold_by_weight: item.is_sold_by_weight || false,
+                unit_price: item.unit_price,
+                sell_by_unit: item.sell_by_unit || 'Each'
+            };
+
+            return {
+                name: item.product_name,
+                original: item.product_name,
+                optional: false,
+                confidence: 'high',
+                product: productData
+            };
+        });
+
+        // Create search results with the existing products as matches
+        const searchResults = items.map(item => ({
+            ingredient: item.product_name,
+            matches: [{
+                name: item.product_name,
+                price: typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price,
+                aisle: item.aisle,
+                image: item.image_url,
+                is_sold_by_weight: item.is_sold_by_weight || false,
+                unit_price: item.unit_price,
+                sell_by_unit: item.sell_by_unit || 'Each'
+            }],
+            match_count: 1
+        }));
+
+        openRecipeEditor('edit', ingredients, searchResults, recipeId, recipeName);
+
+    } catch (error) {
+        console.error('Failed to load recipe:', error);
+        showToast('Failed to load recipe', true);
+    }
+}
+
+// ====== ADD INGREDIENT (Create/Edit modes) ======
+
+function addIngredientToEditor() {
+    console.log('➕ Adding new ingredient to recipe');
+
+    // Open search modal in "add" mode
+    currentItemSearchIndex = null;
+    currentSearchIngredientName = null;
+
+    document.getElementById('ingredientSearchTitle').textContent = 'Add Ingredient';
+    document.getElementById('ingredientSearchContext').textContent = 'Search for an ingredient:';
+    document.getElementById('itemSearchIngredient').textContent = '';
+    document.getElementById('itemSearchInput').value = '';
+    document.getElementById('itemSearchResults').innerHTML = '';
+    document.getElementById('skipIngredientBtn').style.display = 'none';
+
+    closeModal('recipeEditorModal');
+    openModal('ingredientSearchModal');
+}
+
+// ====== REMOVE INGREDIENT ======
+
+function removeIngredientFromEditor(index) {
+    console.log(`🗑️ Removing ingredient at index ${index}`);
+
+    const ingredient = recipeEditorData.ingredients[index];
+
+    // Remove from arrays
+    recipeEditorData.ingredients.splice(index, 1);
+
+    // Remove from selections and skipped
+    delete recipeEditorData.selections[ingredient.name];
+    recipeEditorData.skipped.delete(ingredient.name);
+
+    // Remove from search results
+    const searchIndex = recipeEditorData.searchResults.findIndex(r => r.ingredient === ingredient.name);
+    if (searchIndex >= 0) {
+        recipeEditorData.searchResults.splice(searchIndex, 1);
+    }
+
+    renderRecipeEditor();
+    updateEditorCount();
+
+    showToast(`Removed ${ingredient.name}`);
+}
+
+// ====== INGREDIENT SEARCH (Unified for add/substitute) ======
+
+function openIngredientSearchModal(ingredientName = '', ingredientIndex = null) {
+    console.log('🔍 Opening ingredient search modal');
+
+    currentItemSearchIndex = ingredientIndex;
+    currentSearchIngredientName = ingredientName;
+
+    if (ingredientIndex !== null) {
+        // Substitute mode
+        document.getElementById('ingredientSearchTitle').textContent = 'Find Substitute';
+        document.getElementById('ingredientSearchContext').textContent = 'Searching for:';
+        document.getElementById('itemSearchIngredient').textContent = ingredientName;
+        document.getElementById('itemSearchInput').value = ingredientName;
+        document.getElementById('skipIngredientBtn').style.display = 'block';
+    } else {
+        // Add new ingredient mode
+        document.getElementById('ingredientSearchTitle').textContent = 'Add Ingredient';
+        document.getElementById('ingredientSearchContext').textContent = 'Search for:';
+        document.getElementById('itemSearchIngredient').textContent = '';
+        document.getElementById('itemSearchInput').value = '';
+        document.getElementById('skipIngredientBtn').style.display = 'none';
+    }
+
+    document.getElementById('itemSearchResults').innerHTML = '';
+
+    closeModal('recipeEditorModal');
+    openModal('ingredientSearchModal');
+
+    // Auto-search if we have a term
+    if (ingredientName) {
+        searchForIngredient();
+    }
+}
+
+function closeIngredientSearchModal() {
+    closeModal('ingredientSearchModal');
+    openModal('recipeEditorModal');
+}
+
+async function searchForIngredient() {
+    const searchTerm = document.getElementById('itemSearchInput').value.trim();
+
+    if (!searchTerm) {
+        showToast('Enter a search term', true);
+        return;
+    }
+
+    console.log('🔍 Searching for ingredient:', searchTerm);
+
+    const resultsContainer = document.getElementById('itemSearchResults');
+    resultsContainer.innerHTML = '<div style="text-align: center; padding: var(--space-6); color: var(--text-secondary);">⏳ Searching...</div>';
+
+    try {
+        const response = await auth.fetchWithAuth('/api/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                search_term: searchTerm,
+                max_results: 10,
+                store_number: parseInt(selectedStore)
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Search failed');
+        }
+
+        const data = await response.json();
+        const products = data.products || [];
+
+        console.log(`✅ Found ${products.length} products`);
+
+        if (products.length === 0) {
+            resultsContainer.innerHTML = '<div style="text-align: center; padding: var(--space-6); color: var(--text-secondary);">No products found. Try a different search term.</div>';
+            return;
+        }
+
+        // Store products in cache to avoid JSON encoding issues
+        searchResultsCache = products;
+
+        // Render search results as selectable cards
+        let html = '<div class="import-search-results-grid">';
+        products.forEach((product, index) => {
+            const weightBadge = product.is_sold_by_weight
+                ? `<div class="weight-badge-tiny">⚖️ ${product.sell_by_unit || 'lb'}</div>`
+                : '';
+
+            html += `
+                <div class="import-search-result-card" onclick='selectIngredientFromSearchByIndex(${index})'>
+                    <div class="import-match-image">
+                        <img src="${product.image || ''}" alt="${escapeHtml(product.name)}">
+                        ${weightBadge}
+                    </div>
+                    <div class="import-match-name">${escapeHtml(product.name)}</div>
+                    <div class="import-match-price">${escapeHtml(product.price)}</div>
+                    ${product.unit_price ? `<div class="import-match-unit">${escapeHtml(product.unit_price)}</div>` : ''}
+                    <button class="btn-select-substitute" style="margin-top: 8px; padding: 8px; width: 100%; background: var(--primary-red); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Select This</button>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        resultsContainer.innerHTML = html;
+
+    } catch (error) {
+        console.error('Search error:', error);
+        resultsContainer.innerHTML = '<div style="text-align: center; padding: var(--space-6); color: var(--error-red);">Search failed. Try again.</div>';
+    }
+}
+
+function selectIngredientFromSearchByIndex(index) {
+    // Look up product from cache (avoids JSON encoding issues)
+    const product = searchResultsCache[index];
+    if (!product) {
+        console.error('Product not found in cache:', index);
+        return;
+    }
+    selectIngredientFromSearch(product);
+}
+
+function selectIngredientFromSearch(product) {
+    console.log('✓ Selected ingredient:', product.name);
+
+    if (currentItemSearchIndex !== null) {
+        // Substitute mode - replace existing ingredient's product
+        const ingredient = recipeEditorData.ingredients[currentItemSearchIndex];
+        recipeEditorData.selections[ingredient.name] = product;
+
+        // Update search results
+        const resultIndex = recipeEditorData.searchResults.findIndex(r => r.ingredient === ingredient.name);
+        if (resultIndex >= 0) {
+            recipeEditorData.searchResults[resultIndex].matches.unshift(product);
+        } else {
+            recipeEditorData.searchResults.push({
+                ingredient: ingredient.name,
+                matches: [product],
+                match_count: 1
+            });
+        }
+
+        showToast(`✓ Selected ${product.name}`);
+    } else {
+        // Add new ingredient mode
+        const ingredientName = product.name;
+
+        // Add to ingredients list
+        recipeEditorData.ingredients.push({
+            name: ingredientName,
+            original: ingredientName,
+            optional: false,
+            confidence: 'high'
+        });
+
+        // Add to search results
+        recipeEditorData.searchResults.push({
+            ingredient: ingredientName,
+            matches: [product],
+            match_count: 1
+        });
+
+        // Auto-select it
+        recipeEditorData.selections[ingredientName] = product;
+
+        showToast(`✓ Added ${product.name}`);
+    }
+
+    closeIngredientSearchModal();
+    renderRecipeEditor();
+    updateEditorCount();
+}
+
+function skipCurrentIngredient() {
+    if (currentItemSearchIndex === null) return; // Can't skip in add mode
+
+    const ingredient = recipeEditorData.ingredients[currentItemSearchIndex];
+    recipeEditorData.skipped.add(ingredient.name);
+    delete recipeEditorData.selections[ingredient.name];
+
+    closeIngredientSearchModal();
+    renderRecipeEditor();
+    updateEditorCount();
+}
+
+// ====== SAVE RECIPE ======
+
+async function saveRecipeFromEditor() {
+    const selectedCount = Object.keys(recipeEditorData.selections).length;
+
+    if (selectedCount === 0) {
+        showToast('Please select at least one item', true);
+        return;
+    }
+
+    const mode = recipeEditorData.mode;
+
+    if (mode === 'edit') {
+        // Update existing recipe
+        await updateExistingRecipe();
+    } else {
+        // Create new recipe (import or create mode)
+        await createNewRecipeFromEditor();
+    }
+}
+
+async function createNewRecipeFromEditor() {
+    const selectedCount = Object.keys(recipeEditorData.selections).length;
+
+    // Prompt for recipe name
+    const name = prompt('Enter recipe name:');
+
+    if (!name || !name.trim()) {
+        showToast('Recipe name required', true);
+        return;
+    }
+
+    closeModal('recipeEditorModal');
+    showToast('Saving recipe...');
+
+    try {
+        // Create recipe
+        const createResponse = await auth.fetchWithAuth('/api/recipes/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: name.trim(),
+                description: `Recipe with ${selectedCount} ingredients`
+            })
+        });
+
+        if (!createResponse.ok) {
+            throw new Error('Failed to create recipe');
+        }
+
+        const createData = await createResponse.json();
+        const recipeId = createData.recipe_id;
+
+        // Add all selected items
+        let successCount = 0;
+        const selectedProducts = Object.values(recipeEditorData.selections);
+
+        for (const product of selectedProducts) {
+            try {
+                const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: product.name,
+                        price: product.price,
+                        quantity: 1,
+                        aisle: product.aisle,
+                        image: product.image,
+                        search_term: 'recipe-editor',
+                        is_sold_by_weight: product.is_sold_by_weight || false,
+                        unit_price: product.unit_price || null,
+                        sell_by_unit: product.sell_by_unit || 'Each'
+                    })
+                });
+
+                if (response.ok) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Failed to add item:', error);
+            }
+        }
+
+        showToast(`✓ Recipe "${name}" saved with ${successCount} item${successCount === 1 ? '' : 's'}`);
+
+        // Clear state
+        clearEditorState();
+
+        // Reload recipes list
+        await showRecipes();
+
+    } catch (error) {
+        console.error('❌ Save recipe error:', error);
+        showToast('Failed to save recipe. Try again.', true);
+    }
+}
+
+async function updateExistingRecipe() {
+    const recipeId = recipeEditorData.recipeId;
+    const recipeName = recipeEditorData.recipeName;
+
+    closeModal('recipeEditorModal');
+    showToast('Updating recipe...');
+
+    try {
+        // Get current recipe items to see what to delete
+        const currentResponse = await auth.fetchWithAuth(`/api/recipes/${recipeId}/items`);
+        const currentData = await currentResponse.json();
+        const currentItems = currentData.items || [];
+
+        // Delete all current items
+        for (const item of currentItems) {
+            await auth.fetchWithAuth(`/api/recipes/items/${item.id}`, {
+                method: 'DELETE'
+            });
+        }
+
+        // Add all selected items
+        let successCount = 0;
+        const selectedProducts = Object.values(recipeEditorData.selections);
+
+        for (const product of selectedProducts) {
+            try {
+                const response = await auth.fetchWithAuth(`/api/recipes/${recipeId}/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: product.name,
+                        price: product.price,
+                        quantity: 1,
+                        aisle: product.aisle,
+                        image: product.image,
+                        search_term: 'recipe-editor',
+                        is_sold_by_weight: product.is_sold_by_weight || false,
+                        unit_price: product.unit_price || null,
+                        sell_by_unit: product.sell_by_unit || 'Each'
+                    })
+                });
+
+                if (response.ok) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Failed to add item:', error);
+            }
+        }
+
+        showToast(`✓ Recipe "${recipeName}" updated with ${successCount} item${successCount === 1 ? '' : 's'}`);
+
+        // Clear state
+        clearEditorState();
+
+        // Reload recipes list
+        await showRecipes();
+
+    } catch (error) {
+        console.error('❌ Update recipe error:', error);
+        showToast('Failed to update recipe. Try again.', true);
+    }
+}
+
+// ====== ADD TO LIST ======
+
+async function addRecipeToList() {
+    const selectedCount = Object.keys(recipeEditorData.selections).length;
+
+    if (selectedCount === 0) {
+        showToast('Please select at least one item', true);
+        return;
+    }
+
+    console.log(`🛒 Adding ${selectedCount} items to list...`);
+
+    closeModal('recipeEditorModal');
+    showToast(`Adding ${selectedCount} items to list...`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    const selectedProducts = Object.values(recipeEditorData.selections);
+
+    for (const product of selectedProducts) {
+        try {
+            const response = await auth.fetchWithAuth('/api/cart/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
+                    aisle: product.aisle,
+                    image: product.image,
+                    search_term: 'recipe-import',
+                    is_sold_by_weight: product.is_sold_by_weight || false,
+                    unit_price: product.unit_price || null,
+                    sell_by_unit: product.sell_by_unit || 'Each'
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                cart = data.cart;
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (error) {
+            console.error('Error adding:', product.name, error);
+            failCount++;
+        }
+    }
+
+    // Update cart display
+    renderCart();
+    scheduleAutoSave();
+
+    // Final success message
+    const skippedCount = recipeEditorData.ingredients.length - selectedCount;
+    let message = `✓ Added ${successCount} item${successCount === 1 ? '' : 's'} to list`;
+    if (skippedCount > 0) {
+        message += ` (${skippedCount} skipped)`;
+    }
+    if (failCount > 0) {
+        message += ` - ${failCount} failed`;
+    }
+
+    showToast(message);
+
+    // Clear state
+    clearEditorState();
+}
+
+// ====== HELPERS ======
+
+function clearEditorState() {
+    recipeEditorData = {
+        mode: 'import',
+        recipeId: null,
+        recipeName: '',
+        ingredients: [],
+        searchResults: [],
+        selections: {},
+        skipped: new Set()
+    };
 }

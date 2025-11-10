@@ -2284,3 +2284,307 @@ input:focus-visible {
         height: 18px;
     }
 }
+/* ===== BUTTON STYLES (MISSING BASE CLASSES) ===== */
+
+.btn-confirm {
+    padding: var(--space-3) var(--space-5);
+    background: var(--success-green);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-confirm:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    padding: var(--space-3) var(--space-5);
+    background: var(--gray-200);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background: var(--gray-300);
+}
+
+/* ===== RECIPE IMPORT STYLES ===== */
+
+/* Import ingredient item container */
+.import-ingredient-item {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    background: var(--bg-card);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    transition: all 0.2s;
+}
+
+.import-ingredient-item.skipped {
+    opacity: 0.5;
+    background: var(--gray-50);
+}
+
+.import-ingredient-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.import-ingredient-header strong {
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+}
+
+.optional-badge {
+    display: inline-block;
+    margin-left: var(--space-2);
+    padding: 2px 8px;
+    background: #3b82f6;
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.skip-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.skip-checkbox input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+/* Matches grid (3 columns) */
+.import-matches-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.import-match-card {
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+    position: relative;
+}
+
+.import-match-card:hover {
+    border-color: var(--primary-red);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.import-match-card.selected {
+    border-color: var(--primary-red);
+    border-width: 3px;
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.import-match-image {
+    position: relative;
+    width: 100%;
+    height: 100px;
+    margin-bottom: var(--space-2);
+}
+
+.import-match-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: #f9fafb;
+    padding: var(--space-1);
+}
+
+.weight-badge-tiny {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    background: #667eea;
+    color: white;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.selected-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: var(--primary-red);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.import-match-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+    line-height: 1.3;
+    min-height: 36px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.import-match-price {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--primary-red);
+    margin-bottom: var(--space-1);
+}
+
+.import-match-unit {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.import-no-matches {
+    padding: var(--space-4);
+    text-align: center;
+    background: #fef3c7;
+    border-radius: var(--radius-md);
+    color: #92400e;
+    margin-bottom: var(--space-3);
+    font-weight: 600;
+}
+
+.btn-search-substitute {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    transition: background 0.2s;
+}
+
+.btn-search-substitute:hover {
+    background: #2563eb;
+}
+
+.import-search-results-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+}
+
+.import-search-result-card {
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.import-search-result-card:hover {
+    border-color: var(--primary-red);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn-select-substitute {
+    width: 100%;
+    padding: var(--space-2);
+    background: var(--primary-red);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: var(--space-2);
+    transition: background 0.2s;
+}
+
+.btn-select-substitute:hover {
+    background: #b91c1c;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+    .import-matches-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .import-search-results-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .import-match-card {
+        padding: var(--space-2);
+    }
+
+    .import-match-image {
+        height: 80px;
+    }
+
+    .import-ingredient-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-2);
+    }
+
+    .skip-checkbox {
+        align-self: flex-end;
+    }
+}
+
+/* Handle missing images gracefully */
+.import-match-image img[src=""], .import-match-image img:not([src]) {
+    display: none;
+}
+
+.import-match-image:has(img[src=""]), .import-match-image:has(img:not([src])) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}

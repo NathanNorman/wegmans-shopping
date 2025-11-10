@@ -15,6 +15,11 @@ from src.database import (
     get_user_store
 )
 from src.auth import get_current_user_optional, AuthUser
+from src.parsers.recipe_parser import parse_recipe_text
+from src.scraper.algolia_direct import AlgoliaDirectScraper
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -47,6 +52,14 @@ class UpdateRecipeRequest(BaseModel):
 class LoadRecipeRequest(BaseModel):
     item_ids: Optional[List[int]] = None
 
+class ParseRecipeRequest(BaseModel):
+    text: str
+
+class ImportSearchRequest(BaseModel):
+    ingredients: List[str]  # List of ingredient names
+    max_results_per_item: int = 3
+    store_number: int = 86  # Store number from UI (default: Raleigh)
+
 @router.get("/recipes")
 async def get_recipes(user: AuthUser = Depends(get_current_user_optional)):
     """Get all recipes for user at their default store"""
@@ -54,6 +67,21 @@ async def get_recipes(user: AuthUser = Depends(get_current_user_optional)):
     store_number = get_user_store(user_id)
     recipes = get_user_recipes(user_id, store_number)
     return {"recipes": recipes}
+
+@router.get("/recipes/{recipe_id}/items")
+async def get_recipe_items(recipe_id: int, user: AuthUser = Depends(get_current_user_optional)):
+    """Get items for a specific recipe"""
+    user_id = str(user.id)
+    store_number = get_user_store(user_id)
+
+    # Get recipe and verify ownership
+    recipes = get_user_recipes(user_id, store_number)
+    recipe = next((r for r in recipes if r['id'] == recipe_id), None)
+
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    return {"success": True, "items": recipe['items'], "recipe": {"id": recipe['id'], "name": recipe['name']}}
 
 @router.post("/recipes/create")
 async def create_new_recipe(recipe_req: CreateRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):
@@ -136,6 +164,114 @@ async def delete_recipe_endpoint(recipe_id: int, user: AuthUser = Depends(get_cu
     store_number = get_user_store(user_id)
     delete_recipe(user_id, recipe_id, store_number)
     return {"success": True}
+
+@router.post("/recipes/parse")
+async def parse_recipe(
+    request: ParseRecipeRequest,
+    user: AuthUser = Depends(get_current_user_optional)
+):
+    """
+    Parse recipe text into structured ingredient list
+
+    Request: { "text": "raw recipe text..." }
+    Response: {
+        "success": True,
+        "ingredients": [
+            {
+                "original": "2 tablespoons olive oil",
+                "name": "olive oil",
+                "optional": false,
+                "confidence": "high"
+            },
+            ...
+        ],
+        "count": 15
+    }
+    """
+    try:
+        ingredients = parse_recipe_text(request.text)
+
+        logger.info(f"Parsed {len(ingredients)} ingredients from recipe text")
+
+        return {
+            "success": True,
+            "ingredients": ingredients,
+            "count": len(ingredients)
+        }
+    except Exception as e:
+        logger.error(f"Recipe parse error: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to parse recipe: {str(e)}")
+
+
+@router.post("/recipes/import-search")
+async def import_search(
+    request: ImportSearchRequest,
+    user: AuthUser = Depends(get_current_user_optional)
+):
+    """
+    Search Wegmans for multiple ingredients (batch search for import)
+
+    Request: {
+        "ingredients": ["olive oil", "chicken breasts", "onion"],
+        "max_results_per_item": 3,
+        "store_number": 86
+    }
+
+    Response: {
+        "success": True,
+        "results": [
+            {
+                "ingredient": "olive oil",
+                "matches": [
+                    {"name": "Italian Olive Oil", "price": "$8.99", ...},
+                    {"name": "Spanish Olive Oil", "price": "$6.99", ...},
+                    {"name": "Organic Olive Oil", "price": "$12.99", ...}
+                ],
+                "match_count": 3
+            },
+            ...
+        ],
+        "total_ingredients": 3
+    }
+    """
+    # Use store_number from request (respects UI selection)
+    store_number = request.store_number
+    scraper = AlgoliaDirectScraper()
+    results = []
+
+    for ingredient_name in request.ingredients:
+        try:
+            # Use Algolia scraper directly
+            logger.info(f"Searching for ingredient: {ingredient_name} at store {store_number}")
+            products = scraper.search_products(
+                query=ingredient_name,
+                max_results=request.max_results_per_item,
+                store_number=store_number
+            )
+
+            results.append({
+                "ingredient": ingredient_name,
+                "matches": products[:request.max_results_per_item],
+                "match_count": len(products)
+            })
+
+            logger.info(f"Found {len(products)} matches for '{ingredient_name}'")
+
+        except Exception as e:
+            logger.warning(f"Search failed for '{ingredient_name}': {e}")
+            results.append({
+                "ingredient": ingredient_name,
+                "matches": [],
+                "match_count": 0,
+                "error": str(e)
+            })
+
+    return {
+        "success": True,
+        "results": results,
+        "total_ingredients": len(request.ingredients)
+    }
+
 
 @router.post("/recipes/{recipe_id}/add-to-cart")
 async def load_recipe(recipe_id: int, load_req: LoadRecipeRequest, user: AuthUser = Depends(get_current_user_optional)):

@@ -481,8 +481,8 @@ def get_user_recipes(user_id: str, store_number: int) -> List[Dict]:
         # For each recipe, fetch its items
         for recipe in recipes:
             cursor.execute("""
-                SELECT product_name, price, quantity, aisle, image_url,
-                       search_term, is_sold_by_weight, unit_price
+                SELECT id, product_name, price, quantity, aisle, image_url,
+                       search_term, is_sold_by_weight, unit_price, sell_by_unit
                 FROM recipe_items
                 WHERE recipe_id = %s
                 ORDER BY id

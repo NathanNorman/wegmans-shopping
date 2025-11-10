@@ -998,3 +998,200 @@ class TestRecipeEndpoints:
         # User 1 should not see User 2's recipe
         recipes = client.get("/api/recipes").json()["recipes"]
         assert not any(r["name"] == "User 2 Recipe" for r in recipes)
+
+
+class TestRecipeImportEndpoints:
+    """Test recipe import and parser API endpoints"""
+
+    def test_parse_recipe_simple(self, client):
+        """Test POST /api/recipes/parse with simple text"""
+        response = client.post('/api/recipes/parse', json={
+            'text': '2 tablespoons olive oil\n1 onion\n3 cloves garlic'
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['success'] is True
+        assert data['count'] == 3
+        assert len(data['ingredients']) == 3
+        assert data['ingredients'][0]['name'] == 'olive oil'
+        assert data['ingredients'][1]['name'] == 'onion'
+        assert data['ingredients'][2]['name'] == 'garlic'
+
+    def test_parse_recipe_with_checkboxes(self, client):
+        """Test parsing with checkbox bullets"""
+        response = client.post('/api/recipes/parse', json={
+            'text': '▢2 tablespoons extra virgin olive oil\n▢1 medium sweet onion, chopped'
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 2
+        assert data['ingredients'][0]['name'] == 'olive oil'
+        assert data['ingredients'][1]['name'] == 'onion'
+        # Verify checkboxes removed
+        assert '▢' not in data['ingredients'][0]['name']
+        # Verify quality words removed
+        assert 'extra virgin' not in data['ingredients'][0]['name']
+        assert 'sweet' not in data['ingredients'][1]['name']
+
+    def test_parse_recipe_empty_text(self, client):
+        """Test parsing with empty text"""
+        response = client.post('/api/recipes/parse', json={'text': ''})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 0
+        assert data['ingredients'] == []
+
+    def test_parse_recipe_edge_cases(self, client):
+        """Test parsing known edge cases"""
+        text = """1 green bell pepper seeded and diced
+14.5 ounces crushed tomatoes 1 can
+2 pounds lean ground beef
+1 jar (12 ounce) marinated, quartered artichokes, drained"""
+
+        response = client.post('/api/recipes/parse', json={'text': text})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 4
+
+        # Verify edge cases parsed correctly
+        names = [ing['name'] for ing in data['ingredients']]
+        assert 'bell pepper' in names[0]
+        assert 'crushed tomatoes' in names[1]
+        assert 'ground beef' in names[2]
+        assert 'marinated' in names[3] and 'artichokes' in names[3]
+
+    def test_parse_recipe_with_sections(self, client):
+        """Test multi-section recipe parsing"""
+        text = """Sauce:
+- 2 cups tomato sauce
+- 1 onion
+
+Toppings:
+- 1 cup cheese"""
+
+        response = client.post('/api/recipes/parse', json={'text': text})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['count'] == 3
+        assert data['ingredients'][0]['section'] == 'Sauce'
+        assert data['ingredients'][2]['section'] == 'Toppings'
+
+    def test_import_search_batch(self, client):
+        """Test POST /api/recipes/import-search"""
+        response = client.post('/api/recipes/import-search', json={
+            'ingredients': ['olive oil', 'chicken', 'onion'],
+            'max_results_per_item': 3,
+            'store_number': 86
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['success'] is True
+        assert data['total_ingredients'] == 3
+        assert len(data['results']) == 3
+
+        # Each result should have matches (or empty list if store doesn't have items)
+        for result in data['results']:
+            assert 'ingredient' in result
+            assert 'matches' in result
+            assert 'match_count' in result
+            assert isinstance(result['matches'], list)
+
+    def test_import_search_with_store_number(self, client):
+        """Test that store_number parameter is respected"""
+        response = client.post('/api/recipes/import-search', json={
+            'ingredients': ['chicken'],
+            'max_results_per_item': 3,
+            'store_number': 86
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['success'] is True
+
+    def test_import_search_empty_ingredients(self, client):
+        """Test with empty ingredient list"""
+        response = client.post('/api/recipes/import-search', json={
+            'ingredients': [],
+            'max_results_per_item': 3,
+            'store_number': 86
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['total_ingredients'] == 0
+        assert data['results'] == []
+
+    def test_import_search_no_matches(self, client):
+        """Test searching for non-existent items"""
+        response = client.post('/api/recipes/import-search', json={
+            'ingredients': ['xyzabc123notarealproduct'],
+            'max_results_per_item': 3,
+            'store_number': 86
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['success'] is True
+        # Should return result with empty matches
+        assert len(data['results']) == 1
+        assert data['results'][0]['match_count'] == 0
+        assert data['results'][0]['matches'] == []
+
+    def test_get_recipe_items(self, client):
+        """Test GET /api/recipes/{id}/items endpoint"""
+        # Create a recipe first
+        create_response = client.post('/api/recipes/create', json={
+            'name': 'Test Recipe for Items'
+        })
+        recipe_id = create_response.json()['recipe_id']
+
+        # Add items to recipe
+        client.post(f'/api/recipes/{recipe_id}/items', json={
+            'name': 'Test Item',
+            'price': '$5.99',
+            'quantity': 1
+        })
+
+        # Get recipe items
+        response = client.get(f'/api/recipes/{recipe_id}/items')
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['success'] is True
+        assert 'items' in data
+        assert len(data['items']) >= 1
+        assert data['items'][0]['product_name'] == 'Test Item'
+
+    def test_get_recipe_items_not_found(self, client):
+        """Test getting items for non-existent recipe"""
+        response = client.get('/api/recipes/99999/items')
+
+        assert response.status_code == 404
+
+    def test_parse_then_search_flow(self, client):
+        """Test complete import flow: parse → search"""
+        # Step 1: Parse recipe
+        parse_response = client.post('/api/recipes/parse', json={
+            'text': '2 tablespoons olive oil\n1 pound chicken\n1 onion, chopped'
+        })
+
+        assert parse_response.status_code == 200
+        parse_data = parse_response.json()
+        ingredient_names = [ing['name'] for ing in parse_data['ingredients']]
+
+        # Step 2: Search for ingredients
+        search_response = client.post('/api/recipes/import-search', json={
+            'ingredients': ingredient_names,
+            'max_results_per_item': 3,
+            'store_number': 86
+        })
+
+        assert search_response.status_code == 200
+        search_data = search_response.json()
+        assert len(search_data['results']) == len(ingredient_names)

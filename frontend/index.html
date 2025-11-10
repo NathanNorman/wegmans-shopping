@@ -310,7 +310,22 @@
             </h2>
             <div id="recipesContainer"></div>
             <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-6); max-width: 500px; margin-left: auto; margin-right: auto;">
-                <button onclick="saveCartAsRecipe()" style="width: 100%; padding: var(--space-4); background: var(--success-green); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
+                <button onclick="openCreateRecipeEditor()" style="width: 100%; padding: var(--space-4); background: var(--success-green); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create New Recipe
+                </button>
+                <button onclick="showImportRecipeModal()" style="width: 100%; padding: var(--space-4); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Import Recipe
+                </button>
+                <button onclick="saveCartAsRecipe()" style="width: 100%; padding: var(--space-4); background: var(--gray-600); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -336,6 +351,126 @@
             <div class="quantity-modal-actions">
                 <button onclick="confirmSaveRecipe()" class="btn-confirm">Save Recipe</button>
                 <button onclick="closeModal('saveRecipeModal')" class="btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Recipe Modal -->
+    <div class="quantity-modal" id="importRecipeModal">
+        <div class="quantity-modal-content" style="max-width: 600px;">
+            <h3>Import Recipe from Text</h3>
+
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-4);">
+                Paste ingredients from any recipe website. We'll help you find Wegmans matches!
+            </p>
+
+            <div style="background: var(--gray-50); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+                <strong style="display: block; margin-bottom: var(--space-2);">Example:</strong>
+                <code style="font-size: 12px; display: block; white-space: pre-line;">2 tablespoons olive oil
+1 medium onion, chopped
+2 cloves garlic, minced</code>
+            </div>
+
+            <textarea
+                id="importRecipeTextarea"
+                placeholder="Paste your recipe ingredients here..."
+                style="width: 100%; height: 300px; padding: var(--space-4); border: 2px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px; font-family: inherit; resize: vertical;"
+            ></textarea>
+
+            <div class="quantity-modal-actions" style="margin-top: var(--space-4);">
+                <button class="btn-cancel" onclick="closeModal('importRecipeModal')">Cancel</button>
+                <button class="btn-confirm" onclick="startRecipeImport()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Parse & Import
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipe Editor Modal (Import/Create/Edit) -->
+    <div class="quantity-modal" id="recipeEditorModal">
+        <div class="quantity-modal-content" style="max-width: 800px; max-height: 90vh;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                <h3 style="margin: 0;" id="recipeEditorTitle">Recipe Editor</h3>
+                <button onclick="closeModal('recipeEditorModal')" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+            </div>
+
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-4);" id="recipeEditorSubtitle">
+                Review the matches we found. Click a product to select it, or use Search/Skip for each ingredient.
+            </p>
+
+            <!-- Add Ingredient Button (for create/edit modes) -->
+            <div id="editorAddIngredientBar" style="display: none; margin-bottom: var(--space-4);">
+                <button onclick="addIngredientToEditor()" style="width: 100%; padding: var(--space-3); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    Add Ingredient
+                </button>
+            </div>
+
+            <!-- Scrollable ingredient list -->
+            <div id="recipeEditorList" style="max-height: 60vh; overflow-y: auto; margin-bottom: var(--space-6);"></div>
+
+            <!-- Bottom action bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-4); border-top: 2px solid var(--border-light);">
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    <span id="editorSelectedCount">0</span> items selected
+                </div>
+                <div style="display: flex; gap: var(--space-3);" id="editorActionButtons">
+                    <button class="btn-cancel" onclick="closeModal('recipeEditorModal')">Cancel</button>
+                    <button class="btn-confirm" onclick="saveRecipeFromEditor()" id="editorSaveBtn" style="background: #3b82f6;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                            <path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path>
+                        </svg>
+                        <span id="editorSaveBtnText">Save as Recipe</span>
+                    </button>
+                    <button class="btn-confirm" onclick="addRecipeToList()" id="editorAddToListBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add <span id="editorAddToListCount">0</span> Items to List
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ingredient Search Modal (for adding/substituting ingredients) -->
+    <div class="quantity-modal" id="ingredientSearchModal">
+        <div class="quantity-modal-content" style="max-width: 600px;">
+            <h3 id="ingredientSearchTitle">Find Ingredient</h3>
+
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-4);">
+                <span id="ingredientSearchContext">Search for an ingredient:</span> <strong id="itemSearchIngredient"></strong>
+            </p>
+
+            <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-4);">
+                <input
+                    type="text"
+                    id="itemSearchInput"
+                    placeholder="Search for ingredient..."
+                    style="flex: 1; padding: var(--space-3); border: 2px solid var(--border-light); border-radius: var(--radius-md); font-size: 14px;"
+                    onkeypress="if(event.key==='Enter') searchForIngredient()"
+                >
+                <button onclick="searchForIngredient()" style="padding: var(--space-3) var(--space-4); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">
+                    Search
+                </button>
+            </div>
+
+            <!-- Search results -->
+            <div id="itemSearchResults" style="max-height: 400px; overflow-y: auto; margin-bottom: var(--space-4);"></div>
+
+            <!-- Bottom actions -->
+            <div style="display: flex; justify-content: space-between; gap: var(--space-3);">
+                <button class="btn-cancel" onclick="closeIngredientSearchModal()">Back</button>
+                <button class="btn-secondary" onclick="skipCurrentIngredient()" id="skipIngredientBtn" style="background: var(--gray-600); color: white; padding: var(--space-3) var(--space-4); border: none; border-radius: var(--radius-md); cursor: pointer;">Skip This Item</button>
             </div>
         </div>
     </div>
