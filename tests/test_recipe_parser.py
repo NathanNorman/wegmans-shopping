@@ -1414,3 +1414,12 @@ Spicy sauce (dadaegi, 다대기) - Optional
         # Verify optional detected
         optional_items = [ing for ing in result if ing['optional']]
         assert len(optional_items) >= 1
+
+    def test_hyphenated_quality_words(self):
+        """Test that hyphenated quality words are preserved correctly"""
+        result = parse_ingredient_line("1/3 cup basil pesto homemade or store-bought")
+
+        # Should extract "basil pesto" not "store bought"
+        assert result['name'] == 'basil pesto'
+        assert 'store' not in result['name']
+        assert 'homemade' not in result['name']

@@ -283,12 +283,13 @@ def clean_ingredient_name(text: str) -> str:
     # Remove bracketed notes: "[optional]", "[15oz]"
     cleaned = re.sub(r'\[[^\]]*\]', '', cleaned)
 
-    # Remove trailing prep instructions (after commas or dashes)
+    # Remove trailing prep instructions (after commas or dashes WITH SPACES)
     # "marinated, quartered artichokes, drained" → "marinated quartered artichokes"
     # "black pepper - preferably freshly grinded" → "black pepper"
+    # But DON'T split hyphenated words like "store-bought", "well-done"
 
-    # Handle both commas and dashes as separators
-    separator_pattern = r'[,\-–—]'  # comma, hyphen, en-dash, em-dash
+    # Handle commas and dashes (with spaces) as separators
+    separator_pattern = r'[,]|\s+[\-–—]\s+'  # comma, or dash with spaces around it
     if re.search(separator_pattern, cleaned):
         parts = [p.strip() for p in re.split(separator_pattern, cleaned)]
         # Keep only parts that have non-prep words
@@ -317,12 +318,12 @@ def clean_ingredient_name(text: str) -> str:
         # Count non-descriptor words in each part (the actual ingredient words)
         def count_descriptor_words(text):
             words = text.split()
-            return sum(1 for w in words if w.lower() in SIZE_WORDS or w.lower() in COLOR_WORDS or w.lower() in QUALITY_WORDS)
+            return sum(1 for w in words if w.lower().strip('.,;:-') in SIZE_WORDS or w.lower().strip('.,;:-') in COLOR_WORDS or w.lower().strip('.,;:-') in QUALITY_WORDS)
 
         first_descriptors = count_descriptor_words(parts[0])
         last_descriptors = count_descriptor_words(parts[-1])
-        first_prep = sum(1 for w in parts[0].split() if w.lower() in PREP_WORDS)
-        last_prep = sum(1 for w in parts[-1].split() if w.lower() in PREP_WORDS)
+        first_prep = sum(1 for w in parts[0].split() if w.lower().strip('.,;:-') in PREP_WORDS)
+        last_prep = sum(1 for w in parts[-1].split() if w.lower().strip('.,;:-') in PREP_WORDS)
 
         # Prefer the part with fewer descriptor/prep words (cleaner ingredient)
         first_junk = first_descriptors + first_prep
@@ -330,8 +331,15 @@ def clean_ingredient_name(text: str) -> str:
 
         if last_junk < first_junk:
             cleaned = parts[-1]
-        else:
+        elif first_junk < last_junk:
             cleaned = parts[0]
+        else:
+            # Tied - prefer the part with more total words (more substance)
+            # "basil pesto homemade" (3 words) > "store-bought" (1 word)
+            if len(parts[0].split()) >= len(parts[-1].split()):
+                cleaned = parts[0]
+            else:
+                cleaned = parts[-1]
 
     # Handle "and" for compound ingredients - if it looks like TWO ingredients, take first
     # But avoid splitting things like "salt and pepper" where both are spices

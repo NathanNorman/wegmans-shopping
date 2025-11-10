@@ -4041,3 +4041,23 @@ function clearEditorState() {
         skipped: new Set()
     };
 }
+
+// ====== ESC KEY HANDLER FOR MODAL NAVIGATION ======
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        // Check which modal is open and handle appropriately
+        const ingredientSearchModal = document.getElementById('ingredientSearchModal');
+        const recipeEditorModal = document.getElementById('recipeEditorModal');
+
+        // If ingredient search modal is open, go back to recipe editor
+        if (ingredientSearchModal && ingredientSearchModal.classList.contains('show')) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeIngredientSearchModal();
+            return;
+        }
+
+        // Other modals can use default close behavior
+    }
+});
