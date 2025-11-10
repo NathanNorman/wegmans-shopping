@@ -120,7 +120,7 @@ class TestSignupEndpoint:
     """Test POST /api/auth/signup"""
 
     @patch('src.api.auth.supabase')
-    @patch('src.database.get_db')
+    @patch('src.api.auth.get_db')
     def test_signup_success_with_session(self, mock_get_db, mock_supabase, client):
         """Test successful signup that returns session immediately"""
         user_id = str(uuid.uuid4())
@@ -183,7 +183,7 @@ class TestSignupEndpoint:
 
     @patch('src.api.auth.supabase')
     @patch('src.api.auth.migrate_anonymous_data')
-    @patch('src.database.get_db')
+    @patch('src.api.auth.get_db')
     def test_signup_with_anonymous_migration(self, mock_get_db, mock_migrate, mock_supabase, client):
         """Test signup with anonymous_user_id triggers data migration"""
         user_id = str(uuid.uuid4())

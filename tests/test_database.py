@@ -38,62 +38,62 @@ class TestCartOperations:
 
     def test_get_empty_cart(self, test_anonymous_user):
         """Test getting cart for user with no items"""
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert cart == []
 
     def test_add_to_cart(self, test_anonymous_user, test_cart_item):
         """Test adding item to cart"""
-        add_to_cart(test_anonymous_user, test_cart_item, quantity=2)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=2, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 1
         assert cart[0]['product_name'] == "Test Product"
         assert float(cart[0]['quantity']) == 2.0
 
     def test_add_duplicate_increases_quantity(self, test_anonymous_user, test_cart_item):
         """Test adding same item twice increases quantity"""
-        add_to_cart(test_anonymous_user, test_cart_item, quantity=1)
-        add_to_cart(test_anonymous_user, test_cart_item, quantity=2)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=2, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 1
         assert float(cart[0]['quantity']) == 3.0
 
     def test_update_cart_quantity(self, test_anonymous_user, test_cart_item):
         """Test updating item quantity"""
-        add_to_cart(test_anonymous_user, test_cart_item)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         cart_item_id = cart[0]['id']
 
-        update_cart_quantity(test_anonymous_user, cart_item_id, 5)
+        update_cart_quantity(test_anonymous_user, cart_item_id, 5, store_number=86)
 
-        updated_cart = get_user_cart(test_anonymous_user)
+        updated_cart = get_user_cart(test_anonymous_user, store_number=86)
         assert float(updated_cart[0]['quantity']) == 5.0
 
     def test_remove_from_cart(self, test_anonymous_user, test_cart_item):
         """Test removing item from cart"""
-        add_to_cart(test_anonymous_user, test_cart_item)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 1
 
-        remove_from_cart(test_anonymous_user, cart[0]['id'])
+        remove_from_cart(test_anonymous_user, cart[0]['id'], store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 0
 
     def test_clear_cart(self, test_anonymous_user, test_products):
         """Test clearing entire cart"""
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 3
 
-        clear_cart(test_anonymous_user)
+        clear_cart(test_anonymous_user, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 0
 
 
@@ -102,7 +102,7 @@ class TestSearchCache:
 
     def test_cache_miss_returns_none(self):
         """Test cache miss returns None"""
-        result = get_cached_search("nonexistent_search_term_xyz")
+        result = get_cached_search("nonexistent_search_term_xyz", store_number=86)
         assert result is None
 
     def test_cache_search_results(self, test_products):
@@ -110,22 +110,22 @@ class TestSearchCache:
         search_term = "test_cache_search"
 
         # Cache results
-        cache_search_results(search_term, test_products)
+        cache_search_results(search_term, test_products, store_number=86)
 
         # Retrieve from cache
-        cached = get_cached_search(search_term)
+        cached = get_cached_search(search_term, store_number=86)
         assert cached is not None
         assert len(cached) == 3
         assert cached[0]['name'] == "Bananas"
 
     def test_cache_is_case_insensitive(self, test_products):
         """Test cache lookup is case-insensitive"""
-        cache_search_results("BaNaNaS", test_products)
+        cache_search_results("BaNaNaS", test_products, store_number=86)
 
-        cached = get_cached_search("bananas")
+        cached = get_cached_search("bananas", store_number=86)
         assert cached is not None
 
-        cached = get_cached_search("BANANAS")
+        cached = get_cached_search("BANANAS", store_number=86)
         assert cached is not None
 
 
@@ -136,10 +136,10 @@ class TestListOperations:
         """Test saving cart as a list"""
         # Add items to cart
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
 
         # Save as list
-        list_id = save_cart_as_list(test_anonymous_user, "Test Shopping List")
+        list_id = save_cart_as_list(test_anonymous_user, "Test Shopping List", store_number=86)
         assert list_id is not None
         assert isinstance(list_id, int)
 
@@ -153,22 +153,22 @@ class TestListOperations:
         """Test loading saved list into cart"""
         # Create list
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        list_id = save_cart_as_list(test_anonymous_user, "My List")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        list_id = save_cart_as_list(test_anonymous_user, "My List", store_number=86)
 
         # Clear cart
-        clear_cart(test_anonymous_user)
-        assert len(get_user_cart(test_anonymous_user)) == 0
+        clear_cart(test_anonymous_user, store_number=86)
+        assert len(get_user_cart(test_anonymous_user, store_number=86)) == 0
 
         # Load list back into cart
-        load_list_to_cart(test_anonymous_user, list_id)
+        load_list_to_cart(test_anonymous_user, list_id, store_number=86)
 
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 3
 
     def test_save_empty_cart_as_list(self, test_anonymous_user):
         """Test saving empty cart creates empty list"""
-        list_id = save_cart_as_list(test_anonymous_user, "Empty List")
+        list_id = save_cart_as_list(test_anonymous_user, "Empty List", store_number=86)
 
         lists = get_user_lists(test_anonymous_user)
         assert len(lists) == 1
@@ -180,10 +180,10 @@ class TestTransactionSafety:
 
     def test_save_cart_as_list_is_atomic(self, test_anonymous_user, test_cart_item):
         """Test that list creation + item copy is atomic"""
-        add_to_cart(test_anonymous_user, test_cart_item)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
 
         # Save should succeed
-        list_id = save_cart_as_list(test_anonymous_user, "Atomic Test")
+        list_id = save_cart_as_list(test_anonymous_user, "Atomic Test", store_number=86)
         assert list_id is not None
 
         # Both list and items should exist
@@ -194,7 +194,7 @@ class TestTransactionSafety:
     def test_load_list_invalid_id_fails_gracefully(self, test_anonymous_user):
         """Test loading non-existent list fails gracefully"""
         with pytest.raises(ValueError, match="List not found"):
-            load_list_to_cart(test_anonymous_user, 999999)
+            load_list_to_cart(test_anonymous_user, 999999, store_number=86)
 
 
 class TestAnonymousUserCleanup:
@@ -224,16 +224,16 @@ class TestErrorHandling:
     def test_cache_invalid_data_doesnt_crash(self):
         """Test caching invalid data doesn't crash"""
         # Should not raise exception
-        cache_search_results("test", [{"invalid": "data"}])
+        cache_search_results("test", [{"invalid": "data"}], store_number=86)
 
         # Should return cached data (even if invalid)
-        result = get_cached_search("test")
+        result = get_cached_search("test", store_number=86)
         assert result is not None
 
     def test_get_cached_search_handles_errors_gracefully(self):
         """Test cache read errors return None (cache miss)"""
         # Even with database errors, should return None, not raise
-        result = get_cached_search("any_term")
+        result = get_cached_search("any_term", store_number=86)
         assert result is None or isinstance(result, list)
 
     def test_connection_pool_creation_error(self):
@@ -263,12 +263,12 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_cursor
 
             # Should not raise exception
-            cache_search_results("test_term", [{"name": "test"}])
+            cache_search_results("test_term", [{"name": "test"}], store_number=86)
 
     def test_cache_hit_count_update_failure(self):
         """Test cache hit count update failure is handled gracefully"""
         # First cache some results successfully
-        cache_search_results("test_hit_count", [{"name": "test"}])
+        cache_search_results("test_hit_count", [{"name": "test"}], store_number=86)
 
         # Mock to fail only on the UPDATE (hit count), not the SELECT
         with patch('src.database.get_db') as mock_get_db:
@@ -289,7 +289,7 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_cursor
 
             # Should still return cached results despite hit count update failure
-            result = get_cached_search("test_hit_count")
+            result = get_cached_search("test_hit_count", store_number=86)
             assert result is not None
 
     def test_cache_read_exception_returns_none(self):
@@ -301,7 +301,7 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_cursor
 
             # Should return None on error (cache miss)
-            result = get_cached_search("any_term")
+            result = get_cached_search("any_term", store_number=86)
             assert result is None
 
     def test_save_cart_as_list_no_result_error(self):
@@ -312,7 +312,7 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_cursor
 
             with pytest.raises(ValueError, match="Failed to create saved list"):
-                save_cart_as_list("test_user", "Test List")
+                save_cart_as_list("test_user", "Test List", store_number=86)
 
     def test_save_cart_as_recipe_no_result_error(self):
         """Test save_cart_as_recipe handles missing result"""
@@ -322,7 +322,7 @@ class TestErrorHandling:
             mock_get_db.return_value.__enter__.return_value = mock_cursor
 
             with pytest.raises(ValueError, match="Failed to create recipe"):
-                save_cart_as_recipe("test_user", "Test Recipe")
+                save_cart_as_recipe("test_user", "Test Recipe", store_number=86)
 
 
 class TestFrequentItems:
@@ -332,40 +332,49 @@ class TestFrequentItems:
         """Test updating frequent items from cart"""
         # Add items to cart
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
 
         # Update frequent items
-        update_frequent_items(test_anonymous_user)
+        update_frequent_items(test_anonymous_user, store_number=86)
 
-        # Verify items were added to frequent_items
-        frequent = get_frequent_items(test_anonymous_user)
+        # Verify items were added to frequent_items table (query directly since get_frequent_items filters for count >= 2)
+        from src.database import get_db
+        with get_db() as cursor:
+            cursor.execute("""
+                SELECT * FROM frequent_items
+                WHERE user_id = %s AND store_number = %s AND is_manual = FALSE
+            """, (test_anonymous_user, 86))
+            frequent = cursor.fetchall()
         assert len(frequent) == 3
         assert all(item['purchase_count'] == 1 for item in frequent)
 
     def test_frequent_items_increment_count(self, test_anonymous_user, test_cart_item):
         """Test frequent items purchase count increments"""
         # Add item twice
-        add_to_cart(test_anonymous_user, test_cart_item)
-        update_frequent_items(test_anonymous_user)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
+        update_frequent_items(test_anonymous_user, store_number=86)
 
-        clear_cart(test_anonymous_user)
-        add_to_cart(test_anonymous_user, test_cart_item)
-        update_frequent_items(test_anonymous_user)
+        clear_cart(test_anonymous_user, store_number=86)
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
+        update_frequent_items(test_anonymous_user, store_number=86)
 
         # Verify count incremented
-        frequent = get_frequent_items(test_anonymous_user)
+        frequent = get_frequent_items(test_anonymous_user, store_number=86)
         assert len(frequent) == 1
         assert frequent[0]['purchase_count'] == 2
 
     def test_get_frequent_items_limit(self, test_anonymous_user, test_products):
         """Test frequent items respects limit parameter"""
-        # Add items to cart and update frequent
+        # Add items to cart and update frequent TWICE to reach purchase_count >= 2
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        update_frequent_items(test_anonymous_user)
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        update_frequent_items(test_anonymous_user, store_number=86)
 
-        # Get limited results
-        frequent = get_frequent_items(test_anonymous_user, limit=2)
+        # Update again to increment count to 2
+        update_frequent_items(test_anonymous_user, store_number=86)
+
+        # Get limited results (now items have count = 2, so they'll be returned)
+        frequent = get_frequent_items(test_anonymous_user, store_number=86, limit=2)
         assert len(frequent) == 2
 
 
@@ -374,13 +383,13 @@ class TestRecipeOperations:
 
     def test_create_empty_recipe(self, test_anonymous_user):
         """Test creating an empty recipe"""
-        recipe_id = create_recipe(test_anonymous_user, "Thanksgiving Dinner", "Family favorites")
+        recipe_id = create_recipe(test_anonymous_user, "Thanksgiving Dinner", store_number=86, description="Family favorites")
 
         assert recipe_id is not None
         assert isinstance(recipe_id, int)
 
         # Verify recipe was created
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 1
         assert recipes[0]['name'] == "Thanksgiving Dinner"
         assert recipes[0]['description'] == "Family favorites"
@@ -388,9 +397,9 @@ class TestRecipeOperations:
 
     def test_create_recipe_without_description(self, test_anonymous_user):
         """Test creating recipe without description"""
-        recipe_id = create_recipe(test_anonymous_user, "Quick Meals")
+        recipe_id = create_recipe(test_anonymous_user, "Quick Meals", store_number=86)
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 1
         assert recipes[0]['name'] == "Quick Meals"
         assert recipes[0]['description'] is None
@@ -399,32 +408,32 @@ class TestRecipeOperations:
         """Test saving cart as a recipe"""
         # Add items to cart
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
 
         # Save as recipe
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Weekly Groceries", "Standard weekly shopping")
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Weekly Groceries", store_number=86, description="Standard weekly shopping")
 
         assert recipe_id is not None
 
         # Verify recipe has items
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 1
         assert recipes[0]['item_count'] == 3
         assert len(recipes[0]['items']) == 3
 
     def test_get_user_recipes_empty(self, test_anonymous_user):
         """Test getting recipes when user has none"""
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes == []
 
     def test_get_user_recipes_with_items(self, test_anonymous_user, test_products):
         """Test getting recipes with their items"""
         # Create recipe with items
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe", store_number=86)
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 1
         assert recipes[0]['id'] == recipe_id
         assert len(recipes[0]['items']) == 3
@@ -438,23 +447,23 @@ class TestRecipeOperations:
     def test_add_item_to_recipe(self, test_anonymous_user, test_cart_item):
         """Test adding item to existing recipe"""
         # Create empty recipe
-        recipe_id = create_recipe(test_anonymous_user, "Test Recipe")
+        recipe_id = create_recipe(test_anonymous_user, "Test Recipe", store_number=86)
 
         # Add item
         add_item_to_recipe(recipe_id, test_cart_item)
 
         # Verify item was added
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['item_count'] == 1
         assert recipes[0]['items'][0]['product_name'] == "Test Product"
 
     def test_update_recipe_item_quantity(self, test_anonymous_user, test_cart_item):
         """Test updating recipe item quantity"""
         # Create recipe with item
-        add_to_cart(test_anonymous_user, test_cart_item)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test")
+        add_to_cart(test_anonymous_user, test_cart_item, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test", store_number=86)
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         # Get recipe_item id from saved list (not cart id)
         from src.database import get_db
         with get_db() as cursor:
@@ -465,15 +474,15 @@ class TestRecipeOperations:
         update_recipe_item_quantity(recipe_item_id, 5.0)
 
         # Verify update
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert float(recipes[0]['items'][0]['quantity']) == 5.0
 
     def test_remove_item_from_recipe(self, test_anonymous_user, test_products):
         """Test removing item from recipe"""
         # Create recipe with items
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test", store_number=86)
 
         # Get first recipe_item id
         from src.database import get_db
@@ -485,70 +494,70 @@ class TestRecipeOperations:
         remove_item_from_recipe(recipe_item_id)
 
         # Verify removal
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['item_count'] == 2
 
     def test_update_recipe_name(self, test_anonymous_user):
         """Test updating recipe name"""
-        recipe_id = create_recipe(test_anonymous_user, "Old Name")
+        recipe_id = create_recipe(test_anonymous_user, "Old Name", store_number=86)
 
         update_recipe(recipe_id, name="New Name")
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['name'] == "New Name"
 
     def test_update_recipe_description(self, test_anonymous_user):
         """Test updating recipe description"""
-        recipe_id = create_recipe(test_anonymous_user, "Recipe", "Old description")
+        recipe_id = create_recipe(test_anonymous_user, "Recipe", store_number=86, description="Old description")
 
         update_recipe(recipe_id, description="New description")
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['description'] == "New description"
 
     def test_update_recipe_both_fields(self, test_anonymous_user):
         """Test updating both recipe name and description"""
-        recipe_id = create_recipe(test_anonymous_user, "Old", "Old desc")
+        recipe_id = create_recipe(test_anonymous_user, "Old", store_number=86, description="Old desc")
 
         update_recipe(recipe_id, name="New", description="New desc")
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['name'] == "New"
         assert recipes[0]['description'] == "New desc"
 
     def test_update_recipe_empty_description(self, test_anonymous_user):
         """Test updating recipe description to empty string"""
-        recipe_id = create_recipe(test_anonymous_user, "Recipe", "Has description")
+        recipe_id = create_recipe(test_anonymous_user, "Recipe", store_number=86, description="Has description")
 
         update_recipe(recipe_id, description="")
 
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert recipes[0]['description'] == ""
 
     def test_delete_recipe(self, test_anonymous_user, test_products):
         """Test deleting recipe"""
         # Create recipe with items
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "To Delete")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "To Delete", store_number=86)
 
         # Verify it exists
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 1
 
         # Delete it
-        delete_recipe(test_anonymous_user, recipe_id)
+        delete_recipe(test_anonymous_user, recipe_id, store_number=86)
 
         # Verify it's gone
-        recipes = get_user_recipes(test_anonymous_user)
+        recipes = get_user_recipes(test_anonymous_user, store_number=86)
         assert len(recipes) == 0
 
     def test_delete_recipe_cascades_items(self, test_anonymous_user, test_products):
         """Test deleting recipe also deletes its items"""
         # Create recipe with items
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "To Delete")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "To Delete", store_number=86)
 
         # Verify items exist
         from src.database import get_db
@@ -558,7 +567,7 @@ class TestRecipeOperations:
             assert count_before == 3
 
         # Delete recipe
-        delete_recipe(test_anonymous_user, recipe_id)
+        delete_recipe(test_anonymous_user, recipe_id, store_number=86)
 
         # Verify items are also deleted (cascade)
         with get_db() as cursor:
@@ -570,26 +579,26 @@ class TestRecipeOperations:
         """Test loading all items from recipe to cart"""
         # Create recipe
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe", store_number=86)
 
         # Clear cart
-        clear_cart(test_anonymous_user)
-        assert len(get_user_cart(test_anonymous_user)) == 0
+        clear_cart(test_anonymous_user, store_number=86)
+        assert len(get_user_cart(test_anonymous_user, store_number=86)) == 0
 
         # Load recipe to cart
-        load_recipe_to_cart(test_anonymous_user, recipe_id)
+        load_recipe_to_cart(test_anonymous_user, recipe_id, store_number=86)
 
         # Verify all items loaded
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 3
 
     def test_load_recipe_to_cart_selective_items(self, test_anonymous_user, test_products):
         """Test loading specific items from recipe to cart"""
         # Create recipe
         for product in test_products:
-            add_to_cart(test_anonymous_user, product)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe")
+            add_to_cart(test_anonymous_user, product, quantity=1, store_number=86)
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test Recipe", store_number=86)
 
         # Get first two recipe_item IDs
         from src.database import get_db
@@ -598,13 +607,13 @@ class TestRecipeOperations:
             item_ids = [row['id'] for row in cursor.fetchall()]
 
         # Clear cart
-        clear_cart(test_anonymous_user)
+        clear_cart(test_anonymous_user, store_number=86)
 
         # Load only selected items
-        load_recipe_to_cart(test_anonymous_user, recipe_id, item_ids=item_ids)
+        load_recipe_to_cart(test_anonymous_user, recipe_id, store_number=86, item_ids=item_ids)
 
         # Verify only 2 items loaded
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 2
 
     def test_load_recipe_to_cart_increments_quantity(self, test_anonymous_user, test_cart_item):
@@ -612,41 +621,41 @@ class TestRecipeOperations:
         # Add item to cart with quantity 1
         test_cart_item_single = test_cart_item.copy()
         test_cart_item_single['quantity'] = 1
-        add_to_cart(test_anonymous_user, test_cart_item_single, quantity=1)
+        add_to_cart(test_anonymous_user, test_cart_item_single, quantity=1, store_number=86)
 
         # Create recipe with same item (quantity 2 from fixture)
-        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test")
+        recipe_id = save_cart_as_recipe(test_anonymous_user, "Test", store_number=86)
 
         # Clear cart
-        clear_cart(test_anonymous_user)
+        clear_cart(test_anonymous_user, store_number=86)
 
         # Add item back to cart with quantity 1
-        add_to_cart(test_anonymous_user, test_cart_item_single, quantity=1)
+        add_to_cart(test_anonymous_user, test_cart_item_single, quantity=1, store_number=86)
 
         # Load recipe (item already in cart with qty 1, recipe has qty 1)
-        load_recipe_to_cart(test_anonymous_user, recipe_id)
+        load_recipe_to_cart(test_anonymous_user, recipe_id, store_number=86)
 
         # Verify quantity incremented (not replaced)
-        cart = get_user_cart(test_anonymous_user)
+        cart = get_user_cart(test_anonymous_user, store_number=86)
         assert len(cart) == 1
         assert float(cart[0]['quantity']) == 2.0  # 1 in cart + 1 from recipe
 
     def test_load_recipe_invalid_recipe_id(self, test_anonymous_user):
         """Test loading non-existent recipe fails"""
         with pytest.raises(ValueError, match="Recipe not found"):
-            load_recipe_to_cart(test_anonymous_user, 999999)
+            load_recipe_to_cart(test_anonymous_user, 999999, store_number=86)
 
     def test_load_recipe_wrong_user(self, test_anonymous_user):
         """Test user cannot load another user's recipe"""
         # Create recipe with first user
-        create_recipe(test_anonymous_user, "User 1 Recipe")
+        create_recipe(test_anonymous_user, "User 1 Recipe", store_number=86)
 
         # Try to load with different user
         import uuid
         different_user = str(uuid.uuid4())
 
         with pytest.raises(ValueError, match="Recipe not found"):
-            load_recipe_to_cart(different_user, 1)
+            load_recipe_to_cart(different_user, 1, store_number=86)
 
 
 class TestStaleUserCleanup:
@@ -690,7 +699,7 @@ class TestStaleUserCleanup:
             """, (stale_user_with_cart,))
 
         # Add cart item
-        add_to_cart(stale_user_with_cart, test_cart_item)
+        add_to_cart(stale_user_with_cart, test_cart_item, quantity=1, store_number=86)
 
         # Run cleanup
         cleanup_stale_anonymous_users(days_old=30)
@@ -714,7 +723,7 @@ class TestStaleUserCleanup:
             """, (stale_user_with_list,))
 
         # Create saved list
-        save_cart_as_list(stale_user_with_list, "Test List")
+        save_cart_as_list(stale_user_with_list, "Test List", store_number=86)
 
         # Run cleanup
         cleanup_stale_anonymous_users(days_old=30)
@@ -738,7 +747,7 @@ class TestStaleUserCleanup:
             """, (stale_user_with_recipe,))
 
         # Create recipe
-        create_recipe(stale_user_with_recipe, "Test Recipe")
+        create_recipe(stale_user_with_recipe, "Test Recipe", store_number=86)
 
         # Run cleanup
         cleanup_stale_anonymous_users(days_old=30)
