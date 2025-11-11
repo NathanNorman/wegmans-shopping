@@ -1691,7 +1691,9 @@ function toggleMoreMenu() {
 
 function closeMoreMenu() {
     const menu = document.getElementById('moreMenu');
-    menu.style.display = 'none';
+    if (menu) {
+        menu.style.display = 'none';
+    }
 }
 
 // Close more menu when clicking outside
