@@ -2390,8 +2390,31 @@ function generatePrintableList() {
             </div>
     `;
 
-    // Group items by aisle
-    const sortedAisles = Object.keys(byAisle).sort();
+    // Sort aisles: numbered first (1A, 1B, 2A, 03B-R-4...), then named (Dairy, Produce...)
+    const sortedAisles = Object.keys(byAisle).sort((a, b) => {
+        // Extract leading numbers (if any)
+        const aMatch = a.match(/^(\d+)/);
+        const bMatch = b.match(/^(\d+)/);
+
+        const aHasNumber = !!aMatch;
+        const bHasNumber = !!bMatch;
+
+        // Numbered aisles come before named sections
+        if (aHasNumber && !bHasNumber) return -1;
+        if (!aHasNumber && bHasNumber) return 1;
+
+        // Both numbered: compare numerically, then alphabetically
+        if (aHasNumber && bHasNumber) {
+            const aNum = parseInt(aMatch[1]);
+            const bNum = parseInt(bMatch[1]);
+            if (aNum !== bNum) return aNum - bNum;
+            // Same number, compare rest alphabetically (A vs B, etc.)
+            return a.localeCompare(b);
+        }
+
+        // Both named: alphabetical
+        return a.localeCompare(b);
+    });
 
     sortedAisles.forEach(aisle => {
         html += `<h2>Aisle: ${aisle}</h2><table>`;
