@@ -1490,9 +1490,7 @@ function renderCart() {
         cartItems.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">Your list is empty</p><p class="text-xs">Start searching to add items!</p></div>';
         cartCount.textContent = '0';
         document.getElementById('cartTotals').style.display = 'none';
-        document.getElementById('exportBtn').style.display = 'none';
-        document.getElementById('printListBtn').style.display = 'none';
-        document.getElementById('saveCustomBtn').style.display = 'none';
+        document.getElementById('iconActions').style.display = 'none';
         document.getElementById('clearListIcon').style.display = 'none';
         return;
     }
@@ -1565,9 +1563,7 @@ function renderCart() {
     document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
     document.getElementById('total').textContent = `$${total.toFixed(2)}`;
     document.getElementById('cartTotals').style.display = 'block';
-    document.getElementById('exportBtn').style.display = 'block';
-    document.getElementById('printListBtn').style.display = 'block';
-    document.getElementById('saveCustomBtn').style.display = 'block';
+    document.getElementById('iconActions').style.display = 'flex';
     document.getElementById('clearListIcon').style.display = 'inline-flex';
 
     console.log('✅ Cart rendered:', totalItems, 'items, $' + total.toFixed(2), 'total');
@@ -1683,6 +1679,29 @@ async function confirmClearCart() {
         console.error('Clear cart error:', error);
     }
 }
+
+function toggleMoreMenu() {
+    const menu = document.getElementById('moreMenu');
+    if (menu.style.display === 'none' || !menu.style.display) {
+        menu.style.display = 'block';
+    } else {
+        menu.style.display = 'none';
+    }
+}
+
+function closeMoreMenu() {
+    const menu = document.getElementById('moreMenu');
+    menu.style.display = 'none';
+}
+
+// Close more menu when clicking outside
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('moreMenu');
+    const btn = document.getElementById('moreMenuBtn');
+    if (menu && btn && !menu.contains(event.target) && !btn.contains(event.target)) {
+        closeMoreMenu();
+    }
+});
 
 // Cart is now managed by server - this function is deprecated but kept for backwards compatibility
 function saveCart() {
