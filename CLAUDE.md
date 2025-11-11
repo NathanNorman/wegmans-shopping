@@ -14,6 +14,32 @@ Interactive Wegmans shopping list builder with real-time product search, auto-sa
 - **Frontend:** Vanilla JS + CSS (no framework), mobile-first responsive design
 - **Search:** Direct Algolia API calls (src/scraper/algolia_direct.py) - ~1 second per search
 - **Deployment:** Render (auto-deploys from main branch)
+- **Store Numbers:** Critical for correct aisle locations (see `data/reference/STORE_DIRECTORY.md`)
+
+### Store Numbers - CRITICAL FOR CORRECT AISLE LOCATIONS
+
+**Problem:** Wegmans has 110+ stores, each with different aisle layouts. Using the wrong store number gives completely wrong aisle locations.
+
+**Default Store:** 108 (Raleigh, NC - 1200 Wake Towne Drive)
+
+**How to verify your store number:**
+1. Go to https://shop.wegmans.com, select your store
+2. Search for "Kraft Mac and Cheese"
+3. Note the aisle (e.g., "03B-R-4")
+4. See `data/reference/STORE_DIRECTORY.md` for how to test store numbers
+
+**Configuration:**
+- Development: `config/settings.py` → `ALGOLIA_STORE_NUMBER`
+- Production: Render environment variable `ALGOLIA_STORE_NUMBER=108`
+- Database: `users.store_number` column (per-user preference)
+
+**After changing store number:**
+```sql
+-- Clear search cache (has old aisle data)
+DELETE FROM search_cache WHERE store_number = OLD_STORE;
+```
+
+See `data/reference/STORE_DIRECTORY.md` for complete documentation.
 
 ### Data Flow
 1. User searches → `/api/search` → Algolia API (with 7-day cache)

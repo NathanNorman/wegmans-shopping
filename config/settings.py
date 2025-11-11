@@ -37,7 +37,7 @@ class Settings:
     # Algolia configuration (Wegmans product search)
     ALGOLIA_APP_ID = os.getenv("ALGOLIA_APP_ID", "QGPPR19V8V")
     ALGOLIA_API_KEY = os.getenv("ALGOLIA_API_KEY", "9a10b1401634e9a6e55161c3a60c200d")
-    ALGOLIA_STORE_NUMBER = int(os.getenv("ALGOLIA_STORE_NUMBER", "86"))  # Default: Raleigh, NC
+    ALGOLIA_STORE_NUMBER = int(os.getenv("ALGOLIA_STORE_NUMBER", "108"))  # Default: Raleigh, NC (1200 Wake Towne Dr)
 
     # Data paths
     DATA_DIR = BASE_DIR / "data"
