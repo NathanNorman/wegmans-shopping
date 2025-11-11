@@ -2038,36 +2038,32 @@ function renderListCard(list) {
     html += `
             </div>
 
-            <div class="saved-list-actions">
-                <button class="btn-load-all" onclick="replaceCartWithList(${list.id})" style="background: var(--primary-red); color: var(--white);">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+            <div class="card-actions-toolbar">
+                <button class="card-action-icon" onclick="replaceCartWithList(${list.id})" title="Load this list (replaces current cart)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    Load This List
                 </button>
-                <button class="btn-load-all" onclick="addListToCart(${list.id})">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon" onclick="addListToCart(${list.id})" title="Add all items to current cart">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Add All to Current
                 </button>
-                <button class="btn-load-all" onclick="startInteractiveAddList(${list.id})">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon" onclick="startInteractiveAddList(${list.id})" title="Choose which items to add">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="8" x2="12" y2="16"></line>
                         <line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
-                    Choose Items
                 </button>
-                <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon card-action-delete" onclick="deleteSavedList(${list.id})" title="Delete this list">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
-                    Delete
                 </button>
             </div>
         </div>
@@ -2690,35 +2686,31 @@ function renderRecipeCard(recipe) {
     html += `
             </div>
 
-            <div class="saved-list-actions">
-                <button class="btn-load-all" onclick="addAllRecipeItems(${recipe.id})" style="background: var(--primary-red); color: var(--white);">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+            <div class="card-actions-toolbar">
+                <button class="card-action-icon" onclick="addAllRecipeItems(${recipe.id})" title="Add all items to cart">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Add All
                 </button>
-                <button class="btn-load-all" onclick="startInteractiveAdd(${recipe.id})">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon" onclick="startInteractiveAdd(${recipe.id})" title="Choose which items to add">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="8" x2="12" y2="16"></line>
                         <line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
-                    Choose Items
                 </button>
-                <button class="btn-load-all" onclick="openEditRecipeEditor(${recipe.id}, '${escapeHtml(recipe.name).replace(/'/g, "\\'")}')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon" onclick="openEditRecipeEditor(${recipe.id}, '${escapeHtml(recipe.name).replace(/'/g, "\\'")}')'" title="Edit recipe">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
-                    Edit
                 </button>
-                <button class="btn-delete-list" onclick="deleteRecipe(${recipe.id})">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <button class="card-action-icon card-action-delete" onclick="deleteRecipe(${recipe.id})" title="Delete recipe">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
-                    Delete
                 </button>
             </div>
         </div>
