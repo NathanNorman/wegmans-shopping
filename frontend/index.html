@@ -47,13 +47,6 @@
             </svg>
             Recipes
         </button>
-        <button class="btn-clear" onclick="clearCart()" id="mobileClearBtn" style="background: var(--error-red); color: white;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-            Clear
-        </button>
     </div>
 
     <div class="header">
@@ -187,6 +180,12 @@
                         Your List
                     </span>
                     <span style="display: flex; align-items: center; gap: 8px;">
+                        <button id="clearListIcon" class="clear-list-icon" onclick="clearCart(); event.stopPropagation();" style="display: none;" title="Clear list">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
                         <span class="cart-count" id="cartCount">0</span>
                         <svg id="cartToggleIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cart-toggle-icon">
                             <polyline points="6 9 12 15 18 9"></polyline>
@@ -269,13 +268,6 @@
                             <path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path>
                         </svg>
                         My Recipes
-                    </button>
-                    <button class="btn-clear" onclick="clearCart()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                        Clear List
                     </button>
                 </div>
             </div>

@@ -1493,6 +1493,7 @@ function renderCart() {
         document.getElementById('exportBtn').style.display = 'none';
         document.getElementById('printListBtn').style.display = 'none';
         document.getElementById('saveCustomBtn').style.display = 'none';
+        document.getElementById('clearListIcon').style.display = 'none';
         return;
     }
 
@@ -1567,6 +1568,7 @@ function renderCart() {
     document.getElementById('exportBtn').style.display = 'block';
     document.getElementById('printListBtn').style.display = 'block';
     document.getElementById('saveCustomBtn').style.display = 'block';
+    document.getElementById('clearListIcon').style.display = 'inline-flex';
 
     console.log('✅ Cart rendered:', totalItems, 'items, $' + total.toFixed(2), 'total');
 }
