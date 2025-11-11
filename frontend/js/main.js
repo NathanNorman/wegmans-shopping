@@ -283,7 +283,7 @@ async function loadUserStore() {
         console.log(`🏪 User default store: ${selectedStore}`);
     } catch (error) {
         console.error('Failed to load user store:', error);
-        selectedStore = '86'; // Fallback to Raleigh
+        selectedStore = '108'; // Fallback to Raleigh, NC
     }
 }
 
@@ -315,7 +315,7 @@ function initializeStoreSelector() {
         console.log(`🏪 Store initialized: ${storeName} (${selectedStore})`);
     } else {
         console.warn(`⚠️ Store ${selectedStore} not found in store list, defaulting to Raleigh`);
-        selectedStore = '86';
+        selectedStore = '108'; // Raleigh, NC
         initializeStoreSelector(); // Retry with default
     }
 }
