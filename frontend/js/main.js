@@ -932,7 +932,7 @@ async function confirmAddQuantity() {
 
     // INSTANT: Close modal immediately (optimistic UI)
     closeModal('quantityModal');
-    showToast(`✓ Adding ${quantity} to cart...`);
+    showToast(`✓ Adding ${quantity} to list...`);
 
     // Call API to add to cart (in background)
     try {
@@ -973,7 +973,7 @@ async function confirmAddQuantity() {
         scheduleAutoSave();
 
         // Update toast to show success
-        showToast(`✓ Added ${quantity} to cart`);
+        showToast(`✓ Added ${quantity} to list`);
 
         // Bounce animation
         const cartCount = document.getElementById('cartCount');
@@ -983,7 +983,7 @@ async function confirmAddQuantity() {
         setTimeout(() => cartCount.classList.remove('bounce'), 300);
 
     } catch (error) {
-        showToast('Failed to add to cart', true);
+        showToast('Failed to add to list', true);
         console.error('Add to cart error:', error);
 
         // Show detailed error on mobile for debugging
@@ -1615,7 +1615,7 @@ function removeFromCart(index) {
     const displayName = item.product_name || item.name;
 
     document.getElementById('deleteMessage').textContent =
-        `Remove "${displayName}" from your cart?`;
+        `Remove "${displayName}" from your list?`;
 
     openModal('deleteModal');
 }
@@ -1673,9 +1673,9 @@ async function confirmClearCart() {
         const data = await response.json();
         cart = data.cart;
         renderCart();
-        showToast('✓ Cart cleared');
+        showToast('✓ List cleared');
     } catch (error) {
-        showToast('Failed to clear cart', true);
+        showToast('Failed to clear list', true);
         console.error('Clear cart error:', error);
     }
 }
@@ -1881,7 +1881,7 @@ async function saveCurrentList() {
     }
 
     if (cart.length === 0) {
-        showToast('Cart is empty!', true);
+        showToast('List is empty!', true);
         return;
     }
 
@@ -2039,14 +2039,14 @@ function renderListCard(list) {
             </div>
 
             <div class="card-actions-toolbar">
-                <button class="card-action-icon" onclick="replaceCartWithList(${list.id})" title="Load this list (replaces current cart)">
+                <button class="card-action-icon" onclick="replaceCartWithList(${list.id})" title="Load this list (replaces current list)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
                 </button>
-                <button class="card-action-icon" onclick="addListToCart(${list.id})" title="Add all items to current cart">
+                <button class="card-action-icon" onclick="addListToCart(${list.id})" title="Add all items to current list">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -2151,10 +2151,10 @@ async function addListToCart(listId) {
 
         renderCart();
         closeSavedLists();
-        showToast(`✓ Added ${addedCount} items to cart`);
+        showToast(`✓ Added ${addedCount} items to list`);
     } catch (error) {
         console.error('Error adding list to cart:', error);
-        showToast('Failed to add list to cart', true);
+        showToast('Failed to add list items', true);
     }
 }
 
@@ -2276,7 +2276,7 @@ if (window.innerWidth <= 767) {
 
 async function printShoppingList() {
     if (cart.length === 0) {
-        showToast('Cart is empty!', true);
+        showToast('List is empty!', true);
         return;
     }
 
@@ -2532,7 +2532,7 @@ async function saveCustomListNow() {
     }
 
     if (cart.length === 0) {
-        showToast('Cart is empty!', true);
+        showToast('List is empty!', true);
         return;
     }
 
@@ -2607,7 +2607,7 @@ async function showRecipes() {
         console.log(`✅ Loaded ${recipes.length} recipes`);
 
         if (recipes.length === 0) {
-            container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No recipes yet</p><p class="text-xs">Save your cart as a recipe or create a new one!</p></div>';
+            container.innerHTML = '<div class="empty-cart"><div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 2l3 9h9l-7.5 5.5L19 25l-7-5-7 5 2.5-8.5L0 11h9z"></path></svg></div><p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2);">No recipes yet</p><p class="text-xs">Save your list as a recipe or create a new one!</p></div>';
         } else {
             let html = '';
             recipes.forEach(recipe => {
@@ -2687,7 +2687,7 @@ function renderRecipeCard(recipe) {
             </div>
 
             <div class="card-actions-toolbar">
-                <button class="card-action-icon" onclick="addAllRecipeItems(${recipe.id})" title="Add all items to cart">
+                <button class="card-action-icon" onclick="addAllRecipeItems(${recipe.id})" title="Add all items to list">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -2721,7 +2721,7 @@ function renderRecipeCard(recipe) {
 
 async function saveCartAsRecipe() {
     if (cart.length === 0) {
-        showToast('Cart is empty!', true);
+        showToast('List is empty!', true);
         return;
     }
 
@@ -2849,7 +2849,7 @@ async function addAllRecipeItems(recipeId) {
             renderCart();
             scheduleAutoSave();
             closeModal('recipesModal');
-            showToast(`✓ All items added to cart!`);
+            showToast(`✓ All items added to list!`);
         } else {
             showToast('Failed to add items', true);
         }
