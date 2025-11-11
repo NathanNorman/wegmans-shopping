@@ -2029,7 +2029,15 @@ function renderListCard(list) {
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Add to Current
+                    Add All to Current
+                </button>
+                <button class="btn-load-all" onclick="startInteractiveAddList(${list.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Choose Items
                 </button>
                 <button class="btn-delete-list" onclick="deleteSavedList(${list.id})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
@@ -2128,6 +2136,41 @@ async function addListToCart(listId) {
     } catch (error) {
         console.error('Error adding list to cart:', error);
         showToast('Failed to add list to cart', true);
+    }
+}
+
+// Interactive add for saved lists
+async function startInteractiveAddList(listId) {
+    try {
+        // Fetch list details
+        const response = await auth.fetchWithAuth('/api/lists');
+        const data = await response.json();
+        const lists = data.lists || [];
+        const list = lists.find(l => l.id === listId);
+
+        if (!list || list.items.length === 0) {
+            showToast('List has no items', true);
+            return;
+        }
+
+        // Store list items and start flow (reuse recipe flow variables)
+        currentRecipeItems = list.items.map(item => ({
+            ...item,
+            list_id: listId,
+            product_name: item.product_name,
+            price: item.price,
+            quantity: item.quantity,
+            aisle: item.aisle,
+            image_url: item.image_url,
+            search_term: item.search_term || 'saved'
+        }));
+        currentRecipeItemIndex = 0;
+
+        closeModal('savedListsModal');
+        showNextRecipeItem(); // Reuses the same modal flow
+    } catch (error) {
+        console.error('Start interactive add list error:', error);
+        showToast('Failed to start interactive add', true);
     }
 }
 
