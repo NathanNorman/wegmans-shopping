@@ -2632,6 +2632,14 @@ function renderRecipeCard(recipe) {
                     </svg>
                     Add All
                 </button>
+                <button class="btn-load-all" onclick="startInteractiveAdd(${recipe.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Choose Items
+                </button>
                 <button class="btn-load-all" onclick="openEditRecipeEditor(${recipe.id}, '${escapeHtml(recipe.name).replace(/'/g, "\\'")}')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
