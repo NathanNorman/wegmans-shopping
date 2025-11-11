@@ -273,31 +273,30 @@
                 My Recipes
             </h2>
             <div id="recipesContainer"></div>
-            <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-6); max-width: 500px; margin-left: auto; margin-right: auto;">
-                <button onclick="openCreateRecipeEditor()" style="width: 100%; padding: var(--space-4); background: var(--success-green); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- Recipe Actions Toolbar -->
+            <div class="recipe-actions-toolbar">
+                <button class="recipe-action-icon" onclick="openCreateRecipeEditor()" title="Create new recipe">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Create New Recipe
+                    <span>Create</span>
                 </button>
-                <button onclick="showImportRecipeModal()" style="width: 100%; padding: var(--space-4); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="recipe-action-icon" onclick="showImportRecipeModal()" title="Import recipe from text">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    Import Recipe
+                    <span>Import</span>
                 </button>
-                <button onclick="saveCartAsRecipe()" style="width: 100%; padding: var(--space-4); background: var(--gray-600); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background 0.2s;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                <button class="recipe-action-icon" onclick="saveCartAsRecipe()" title="Save current list as recipe">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
                     </svg>
-                    Save List as Recipe
-                </button>
-                <button onclick="closeRecipes()" style="width: 100%; padding: var(--space-4); background: var(--info-blue); color: white; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer; transition: background 0.2s;">
-                    Close
+                    <span>Save List</span>
                 </button>
             </div>
         </div>
@@ -360,23 +359,21 @@
         <div class="quantity-modal-content" style="max-width: 800px; max-height: 90vh;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
                 <h3 style="margin: 0;" id="recipeEditorTitle">Recipe Editor</h3>
-                <button onclick="closeModal('recipeEditorModal')" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <!-- Add Ingredient Button (for create/edit modes) - compact in header -->
+                    <button id="editorAddIngredientBar" onclick="addIngredientToEditor()" style="display: none; padding: var(--space-2); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); cursor: pointer;" title="Add ingredient">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <button onclick="closeModal('recipeEditorModal')" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+                </div>
             </div>
 
             <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: var(--space-4);" id="recipeEditorSubtitle">
                 Review the matches we found. Click a product to select it, or use Search/Skip for each ingredient.
             </p>
-
-            <!-- Add Ingredient Button (for create/edit modes) -->
-            <div id="editorAddIngredientBar" style="display: none; margin-bottom: var(--space-4);">
-                <button onclick="addIngredientToEditor()" style="width: 100%; padding: var(--space-3); background: #3b82f6; color: white; border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    Add Ingredient
-                </button>
-            </div>
 
             <!-- Scrollable ingredient list -->
             <div id="recipeEditorList" style="max-height: 60vh; overflow-y: auto; margin-bottom: var(--space-6);"></div>
