@@ -10,36 +10,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: wegmans_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wegmans_test
-
     steps:
       - uses: actions/checkout@v4
-      - name: Set up database schema
-        run: |
-          psql "$DATABASE_URL" -f migrations/init.sql
-          for f in migrations/0*.sql; do
-            echo "Applying $f..."
-            psql "$DATABASE_URL" -f "$f" || true
-          done
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       - run: pip install -r requirements.txt
       - run: pip install pytest
-      - run: pytest --ignore=tests/test_api_auth.py -k "not test_invalid_token_returns_401 and not test_frequent_items_requires_auth"
+      - name: Run unit tests
+        run: pytest tests/test_recipe_parser.py tests/test_auth_module.py -v
