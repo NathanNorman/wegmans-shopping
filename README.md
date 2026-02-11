@@ -450,7 +450,7 @@ See `docs/SQL_INJECTION_AUDIT.md` for complete security audit.
 - **tests/README.md** - Testing guide
 - **scripts/README.md** - Maintenance scripts
 - **docs/SQL_INJECTION_AUDIT.md** - Security audit
-- **TECH_DEBT_FIX_SUMMARY*.md** - Tech debt resolution (4 documents)
+- **docs/TECH_DEBT_FIX_SUMMARY*.md** - Tech debt resolution (4 documents)
 
 ---
 
