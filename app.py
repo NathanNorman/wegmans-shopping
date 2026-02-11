@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Database connection successful")
         except Exception as e:
             logger.error(f"❌ Database connection failed: {e}")
-            raise
+            logger.warning("⚠️  App starting in degraded mode - database operations will fail")
     else:
         logger.warning("⚠️  DATABASE_URL not set - database operations will fail")
 
